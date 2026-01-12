@@ -1,170 +1,88 @@
-"use client"
-import React, { useActionState, useEffect, useRef } from "react";
-import { renderAsync } from 'docx-preview';
+"use client";
+
+import React, {
+  useActionState,
+  useTransition,
+  useState,
+  useCallback,
+} from "react";
 import { generateDocument, GenerateState } from "../actions/send-model-entries";
+import { Navbar, Footer } from "@/components/layout";
+import { DocumentForm, DocumentPreview } from "@/components/document";
 
 const initialState: GenerateState = {
-  success: false,       // We haven't generated anything yet
-  fileBase64: undefined, // No file exists yet
-  error: undefined,      // No errors yet
+  success: false,
+  fileBase64: undefined,
+  error: undefined,
 };
 
-export default function ModelCratorPage() {
-  const [state, formAction, isPending] = useActionState(
-    generateDocument,
-    initialState
-  );
-  const previewContainerRef = useRef<HTMLDivElement>(null);
+export default function ModelCreatorPage() {
+  const [state, formAction] = useActionState(generateDocument, initialState);
+  const [isPending, startTransition] = useTransition();
+  const [resetKey, setResetKey] = useState(0);
+  const [isReset, setIsReset] = useState(false);
 
-  useEffect(() => {
-    async function renderPreview() {
-      if (state.success && state.fileBase64 && previewContainerRef.current) {
-        try {
-          // Convert Base64 back to Blob
-          const byteCharacters = atob(state.fileBase64);
-          const byteNumbers = new Array(byteCharacters.length);
-          for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-          }
-          const byteArray = new Uint8Array(byteNumbers);
-          const blob = new Blob([byteArray], {
-            type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-          });
+  const handleFormSubmit = (formData: FormData) => {
+    setIsReset(false);
+    startTransition(() => {
+      formAction(formData);
+    });
+  };
 
-          // Clear previous content
-          previewContainerRef.current.innerHTML = "";
+  const handleReset = useCallback(() => {
+    // Increment key to force re-mount of form, clearing all state
+    setResetKey((prev) => prev + 1);
+    // Mark as reset to clear the preview without calling server action
+    setIsReset(true);
+  }, []);
 
-          // Render via docx-preview
-          await renderAsync(
-            blob,
-            previewContainerRef.current,
-            previewContainerRef.current,
-            {
-              className: "docx",
-              inWrapper: false,
-              ignoreWidth: false,
-            }
-          );
-        } catch (e) {
-          console.error("Preview rendering failed", e);
-        }
-      }
-    }
-
-    renderPreview();
-  }, [state]); // Re
   return (
-    <main className="min-h-screen p-8 bg-gray-50 flex flex-col md:flex-row gap-8">
-      {/* Input Form */}
-      <div className="w-full md:w-1/3 bg-white p-6 rounded-xl shadow-sm h-fit">
-        <h1 className="text-2xl font-bold mb-6 text-gray-800">
-          Document Generator
-        </h1>
+    <div className="min-h-screen bg-linear-to-br from-gray-50 via-white to-blue-50">
+      <Navbar />
 
-        {/* We use formAction here, provided by the hook */}
-        <form action={formAction} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Company Name
-            </label>
-            <input
-              name="name"
-              type="text"
-              placeholder="Acme Corp"
-              required
-              className="mt-1 block w-full rounded-md border border-gray-300 p-2"
-            />
+      <main className="pt-20 pb-8 px-4 sm:pt-24 sm:pb-12">
+        <div className="mx-auto max-w-7xl">
+          {/* Page Header */}
+          <div className="mb-6 text-center sm:mb-8">
+            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl lg:text-4xl">
+              Document Creator
+            </h1>
+            <p className="mt-2 text-sm text-gray-600 sm:text-base lg:text-lg">
+              Select a template, fill in your details, and generate your
+              document
+            </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              CEO Name
-            </label>
-            <input
-              name="ceo"
-              type="text"
-              placeholder="John Doe"
-              required
-              className="mt-1 block w-full rounded-md border border-gray-300 p-2"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Released By
-            </label>
-            <input
-              name="releasedBy"
-              type="text"
-              placeholder="HR Department"
-              required
-              className="mt-1 block w-full rounded-md border border-gray-300 p-2"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Date
-            </label>
-            <input
-              name="date"
-              type="date"
-              required
-              className="mt-1 block w-full rounded-md border border-gray-300 p-2"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Logo
-            </label>
-            {/* Note: Alt Text in your DOCX for this image must match {logo} */}
-            <input
-              name="logo"
-              type="file"
-              accept="image/*"
-              className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-            />
-          </div>
-
-          {state.error && (
-            <div className="text-red-500 text-sm p-2 bg-red-50 rounded">
-              {state.error}
+          {/* Main Content - Responsive Grid */}
+          <div className="grid gap-6 lg:grid-cols-[380px_1fr] xl:grid-cols-[420px_1fr] lg:gap-8">
+            {/* Form Section */}
+            <div className="order-1 lg:order-none">
+              <DocumentForm
+                key={resetKey}
+                onSubmit={handleFormSubmit}
+                onReset={handleReset}
+                isPending={isPending}
+                hasDocument={!isReset && state.success}
+                fileBase64={!isReset ? state.fileBase64 : undefined}
+                error={!isReset ? state.error : undefined}
+              />
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={isPending}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-blue-300 transition-colors"
-          >
-            {isPending ? "Processing..." : "Generate Preview"}
-          </button>
-        </form>
-      </div>
-
-      {/* Preview Area */}
-      <div className="w-full md:w-2/3 bg-gray-200 p-4 rounded-xl shadow-inner overflow-hidden flex flex-col">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-gray-700">
-            Live Document Preview
-          </h2>
-        </div>
-
-        <div className="flex-1 overflow-auto bg-gray-200 flex justify-center">
-          <div
-            ref={previewContainerRef}
-            className="bg-white shadow-lg min-h-[800px] w-full max-w-[800px] p-8 origin-top scale-95"
-          >
-            {/* Empty State */}
-            {!state.success && (
-              <div className="text-center text-gray-400 mt-20">
-                Fill the form and click Generate Preview to render the DOCX.
-              </div>
-            )}
+            {/* Preview Section */}
+            <div className="order-2 lg:order-none min-h-125 sm:min-h-150 lg:min-h-200">
+              <DocumentPreview
+                fileBase64={
+                  !isReset && state.success ? state.fileBase64 : undefined
+                }
+                isLoading={isPending}
+                className="h-full"
+              />
+            </div>
           </div>
         </div>
-      </div>
-    </main>
+      </main>
+
+      <Footer />
+    </div>
   );
 }
