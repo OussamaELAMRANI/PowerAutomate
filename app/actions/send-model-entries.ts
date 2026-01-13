@@ -8,7 +8,7 @@ import { z } from "zod";
 // Server-side validation schema
 const serverFormSchema = z.object({
   model: z.string().min(1, "Model is required"),
-  name: z.string().min(2, "Company name is required"),
+  name: z.string().min(2, "Company name is required").optional(),
   ceo_name: z.string().min(2, "CEO name is required"),
   releasedBy: z.string().min(2, "Released by is required"),
   doc_date: z.string().min(1, "Date is required"),
@@ -104,7 +104,7 @@ export async function generateDocument(
     // 4. Data Object for Replacement
     // Configure image with proper dimensions and right alignment
     const data: TemplateData = {
-      name,
+      name: name || "",
       ceo_name,
       releasedBy,
       doc_date,
@@ -119,6 +119,7 @@ export async function generateDocument(
         : "",
     };
 
+    
     // 5. Process the Template
     const handler = new TemplateHandler();
     const docBlob = await handler.process(templateBuffer, data);

@@ -60,9 +60,11 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
     setValue,
     control,
     reset,
+    trigger,
     formState: { errors },
   } = useForm<ModelFormData>({
     resolver: zodResolver(modelFormSchema),
+    mode: "onChange",
     defaultValues: {
       model: "",
       companyName: "",
@@ -74,6 +76,13 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
 
   const selectedModel = watch("model");
 
+  // Re-validate companyName when model changes to clear errors for model_2
+  React.useEffect(() => {
+    if (selectedModel) {
+      trigger("companyName");
+    }
+  }, [selectedModel, trigger]);
+
   const handleReset = () => {
     reset();
     setLogoFile(null);
@@ -83,7 +92,7 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
   const handleFormSubmit = (data: ModelFormData) => {
     const formData = new FormData();
     formData.append("model", data.model);
-    formData.append("name", data.companyName);
+    if (data.companyName) formData.append("name", data.companyName);
     formData.append("ceo_name", data.ceoName);
     formData.append("releasedBy", data.releasedBy);
     formData.append("doc_date", data.documentDate);
@@ -114,7 +123,7 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
   };
 
   return (
-    <Card variant="gradient" className="h-fit lg:sticky lg:top-24">
+    <Card variant="gradient" className="h-fit sticky top-20 sm:top-24">
       <CardHeader>
         <div className="flex items-center gap-3 mb-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 sm:h-12 sm:w-12">
@@ -262,11 +271,11 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
           )}
         </CardContent>
 
-        <CardFooter className="flex-col gap-3">
+        <CardFooter className="flex-col gap-3 ">
           <Button
             type="submit"
             isLoading={isPending}
-            className="w-full"
+            className="w-full cursor-pointer"
             size="lg"
             leftIcon={<Sparkles className="h-5 w-5" />}
           >
@@ -300,7 +309,7 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
             <Button
               type="button"
               variant="ghost"
-              className="w-full"
+              className="w-full  cursor-pointer"
               onClick={handleReset}
               leftIcon={<RotateCcw className="h-4 w-4" />}
             >
