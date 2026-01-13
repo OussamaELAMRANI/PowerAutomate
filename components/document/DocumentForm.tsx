@@ -169,19 +169,24 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
           )}
 
           {/* Company Name */}
-          <FormField
-            label="Company Name"
-            name="companyName"
-            required
-            error={errors.companyName?.message}
-          >
-            <Input
-              {...register("companyName")}
-              placeholder="Enter company name"
-              leftIcon={<Building2 className="h-5 w-5" />}
-              hasError={!!errors.companyName}
-            />
-          </FormField>
+          {MODEL_TEMPLATES.find((m) => m.id === selectedModel)?.file ===
+          "model_2.docx" ? (
+            <></>
+          ) : (
+            <FormField
+              label="Company Name"
+              name="companyName"
+              required
+              error={errors.companyName?.message}
+            >
+              <Input
+                {...register("companyName")}
+                placeholder="Enter company name"
+                leftIcon={<Building2 className="h-5 w-5" />}
+                hasError={!!errors.companyName}
+              />
+            </FormField>
+          )}
 
           {/* CEO Name */}
           <FormField
