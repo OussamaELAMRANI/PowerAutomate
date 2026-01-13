@@ -61,11 +61,11 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {isLoading ? (
           <Loader2 className="h-5 w-5 animate-spin" />
         ) : (
-          leftIcon && <span className="flex-shrink-0">{leftIcon}</span>
+          leftIcon && <span className="shrink-0">{leftIcon}</span>
         )}
         {children}
         {!isLoading && rightIcon && (
-          <span className="flex-shrink-0">{rightIcon}</span>
+          <span className="shrink-0">{rightIcon}</span>
         )}
       </button>
     );

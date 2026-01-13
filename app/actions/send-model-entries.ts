@@ -6,13 +6,26 @@ import path from "node:path";
 import { z } from "zod";
 
 // Server-side validation schema
-const serverFormSchema = z.object({
-  model: z.string().min(1, "Model is required"),
-  name: z.string().min(2, "Company name is required").optional(),
-  ceo_name: z.string().min(2, "CEO name is required"),
-  releasedBy: z.string().min(2, "Released by is required"),
-  doc_date: z.string().min(1, "Date is required"),
-});
+const serverFormSchema = z
+  .object({
+    model: z.string().min(1, "Model is required"),
+    name: z.string().optional().nullable(),
+    ceo_name: z.string().min(2, "CEO name is required"),
+    releasedBy: z.string().min(2, "Released by is required"),
+    doc_date: z.string().min(1, "Date is required"),
+  })
+  .superRefine((data, ctx) => {
+    // Company name is required only for model_1
+    if (data.model === "model_1") {
+      if (!data.name || data.name.length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Company name must be at least 2 characters",
+          path: ["name"],
+        });
+      }
+    }
+  });
 
 export type GenerateState = {
   success: boolean;
@@ -28,7 +41,7 @@ export async function generateDocument(
   try {
     const rawData = {
       model: formData.get("model") as string,
-      name: formData.get("name") as string,
+      name: (formData.get("name") as string) || "",
       ceo_name: formData.get("ceo_name") as string,
       releasedBy: formData.get("releasedBy") as string,
       doc_date: formData.get("doc_date") as string,
