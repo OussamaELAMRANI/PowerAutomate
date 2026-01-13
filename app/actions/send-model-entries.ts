@@ -1,5 +1,5 @@
 "use server";
-
+import sizeOf from "image-size"; // <--- Import this
 import { TemplateData, TemplateHandler } from "easy-template-x";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -53,7 +53,7 @@ export async function generateDocument(
       templateFileName
     );
 
-	console.log({ model, name, ceo_name, releasedBy, doc_date });
+    console.log({ model, name, ceo_name, releasedBy, doc_date });
 
     let templateBuffer: Buffer;
     try {
@@ -87,6 +87,22 @@ export async function generateDocument(
       }
     }
 
+    const dimensions = sizeOf(logoData as Buffer);
+    const originalWidth = dimensions.width || 100;
+    const originalHeight = dimensions.height || 100;
+
+    // 2. Define your Header Constraints (The max space available in your DOCX table)
+    const MAX_WIDTH = 150; // pixels (approx 4cm)
+    const MAX_HEIGHT = 60; // pixels (approx 1.5cm)
+
+    // 3. Calculate Scale Ratio (Contain logic)
+    // This math finds the largest size that fits BOTH width and height limits
+    const widthRatio = MAX_WIDTH / originalWidth;
+    const heightRatio = MAX_HEIGHT / originalHeight;
+    const scale = Math.min(widthRatio, heightRatio); // Use the smaller ratio to ensure it fits
+
+    // 4. Data Object for Replacement
+    // Configure image with proper dimensions and right alignment
     const data: TemplateData = {
       name,
       ceo_name,
@@ -97,8 +113,8 @@ export async function generateDocument(
             _type: "image",
             source: logoData,
             format: imageMimeType,
-            width: 120,
-            height: 60,
+            width: Math.round(originalWidth * scale),
+            height: Math.round(originalHeight * scale),
           }
         : "",
     };
