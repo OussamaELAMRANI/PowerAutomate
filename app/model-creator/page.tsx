@@ -9,6 +9,7 @@ import React, {
 import { generateDocument, GenerateState } from "../actions/send-model-entries";
 import { Navbar, Footer } from "@/components/layout";
 import { DocumentForm, DocumentPreview } from "@/components/document";
+import CEBadge from "@/components/ui/CEBadge";
 
 const initialState: GenerateState = {
   success: false,
@@ -42,9 +43,12 @@ export default function ModelCreatorPage() {
         <div className="mx-auto max-w-7xl">
           {/* Page Header */}
           <div className="mb-6 text-center sm:mb-8">
-            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl lg:text-4xl">
-              Document Creator
-            </h1>
+            <div className="flex justify-center  gap-4">
+              <CEBadge />
+              <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl lg:text-4xl">
+                Document Creator
+              </h1>
+            </div>
             <p className="mt-2 text-sm text-gray-600 sm:text-base lg:text-lg">
               Select templates, fill in your details, and generate your
               documents
