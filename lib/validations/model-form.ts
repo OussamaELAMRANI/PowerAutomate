@@ -23,16 +23,16 @@ export type ModelFormData = z.infer<typeof modelFormSchema>;
 export const MODEL_TEMPLATES = [
   {
     id: "model_1",
-    name: "Model 1 - Standard Document",
-    description: "Basic company document template with logo support",
+    name: "Model 1 - Template 1",
+    description: "with the company name",
     file: "model_1.docx",
   },
   {
     id: "model_2",
-    name: "Model 2 - Extended Template",
-    description: "Extended document with additional sections",
+    name: "Model 2 - Tempate 2",
+    description: "without company name",
     file: "model_2.docx",
-    disabled: true,
+    disabled: false,
   },
 ] as const;
 

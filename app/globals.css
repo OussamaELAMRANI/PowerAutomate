@@ -29,6 +29,8 @@
 
 html {
   scroll-behavior: smooth;
+  /* Prevent layout shift when scrollbar appears/disappears */
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -37,6 +39,18 @@ body {
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Prevent horizontal overflow */
+  overflow-x: hidden;
+}
+
+/* Prevent Headless UI from adding padding to body */
+body[style*="padding-right"] {
+  padding-right: 0 !important;
+}
+
+/* Keep fixed elements stable when scroll is locked */
+[data-headlessui-portal] ~ * .fixed {
+  padding-right: 0 !important;
 }
 
 /* Custom scrollbar */

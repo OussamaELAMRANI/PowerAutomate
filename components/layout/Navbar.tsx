@@ -11,9 +11,10 @@ export const Navbar: React.FC<NavbarProps> = ({ className }) => {
   return (
     <nav
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 border-b border-gray-200/50 bg-white/80 backdrop-blur-xl",
+        "fixed top-0 inset-x-0 z-50 border-b border-gray-200/50 bg-white/80 backdrop-blur-xl w-full",
         className
       )}
+      style={{ width: "100vw" }}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-14 items-center justify-between sm:h-16">
@@ -21,10 +22,10 @@ export const Navbar: React.FC<NavbarProps> = ({ className }) => {
           <Link href="/" className="flex items-center gap-2 group sm:gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30 transition-transform group-hover:scale-105 sm:h-10 sm:w-10 sm:rounded-xl">
               {/* <Zap className="h-4 w-4 sm:h-5 sm:w-5" /> */}
-			  <h1 className="font-bold">CE</h1>
+              <h1 className="font-bold">CE</h1>
             </div>
             <span className="text-base font-bold bg-linear-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent sm:text-xl">
-             CE Tools 
+              CE Tools
             </span>
           </Link>
 
