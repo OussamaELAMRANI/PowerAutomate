@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// Validation schema for the document generator form
 export const modelFormSchema = z.object({
   model: z.string().min(1, "Please select a model template"),
   companyName: z

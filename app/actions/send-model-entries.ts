@@ -26,7 +26,6 @@ export async function generateDocument(
   formData: FormData
 ): Promise<GenerateState> {
   try {
-    // 1. Extract and validate data from FormData
     const rawData = {
       model: formData.get("model") as string,
       name: formData.get("name") as string,
@@ -35,7 +34,6 @@ export async function generateDocument(
       doc_date: formData.get("doc_date") as string,
     };
 
-    // Validate using Zod
     const validationResult = serverFormSchema.safeParse(rawData);
     if (!validationResult.success) {
       const errorMessages = validationResult.error.issues
@@ -48,7 +46,6 @@ export async function generateDocument(
       validationResult.data;
     const logoFile = formData.get("logo") as File | null;
 
-    // 2. Load the DOCX Template based on selected model
     const templateFileName = `${model}.docx`;
     const templatePath = path.join(
       process.cwd(),
@@ -68,7 +65,6 @@ export async function generateDocument(
       };
     }
 
-    // 3. Prepare Image Data (if uploaded)
     let logoData = null;
     let imageMimeType = "image/png";
 
@@ -76,8 +72,6 @@ export async function generateDocument(
       const arrayBuffer = await logoFile.arrayBuffer();
       logoData = Buffer.from(arrayBuffer);
 
-      // easy-template-x expects MIME types, not file extensions
-      // Supported MIME types: image/png, image/jpeg, image/gif, image/bmp, image/svg+xml
       const supportedMimeTypes = [
         "image/png",
         "image/jpeg",
@@ -86,17 +80,13 @@ export async function generateDocument(
         "image/svg+xml",
       ];
 
-      // Use the file's MIME type if supported, otherwise default to image/png
       if (supportedMimeTypes.includes(logoFile.type)) {
         imageMimeType = logoFile.type;
       } else {
-        // For unsupported types like webp, use png as fallback
         imageMimeType = "image/png";
       }
     }
 
-    // 4. Data Object for Replacement
-    // Configure image with proper dimensions and right alignment
     const data: TemplateData = {
       name,
       ceo_name,

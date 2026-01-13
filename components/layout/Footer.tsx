@@ -13,9 +13,7 @@ export const Footer: React.FC<FooterProps> = ({ className }) => {
           <p className="text-sm text-gray-500">
             © {new Date().getFullYear()} PowerAutomate. All rights reserved.
           </p>
-          <p className="text-sm text-gray-400">
-            Built with Next.js, Tailwind CSS & ❤️
-          </p>
+          <p className="text-sm text-gray-400"></p>
         </div>
       </div>
     </footer>

@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// In-memory store for temporary document storage (in production, use Redis or similar)
 const documentStore = new Map<
   string,
   { data: Buffer; timestamp: number; contentType: string }
 >();
 
-// Clean up old documents (older than 5 minutes)
 function cleanupOldDocuments() {
   const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
   for (const [key, value] of documentStore.entries()) {
@@ -28,10 +26,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Clean up old documents periodically
     cleanupOldDocuments();
 
-    // Decode base64 to buffer
     const buffer = Buffer.from(base64, "base64");
 
     // Store the document

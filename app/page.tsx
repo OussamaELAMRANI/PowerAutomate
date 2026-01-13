@@ -15,9 +15,7 @@ export default function Home() {
     <div className="min-h-screen bg-linear-to-br from-gray-50 via-white to-blue-50">
       <Navbar />
 
-      {/* Hero Section */}
       <main className="relative overflow-hidden pt-16">
-        {/* Background Decorations */}
         <div className="absolute inset-0 -z-10">
           <div className="absolute left-1/4 top-20 h-48 w-48 rounded-full bg-blue-200 opacity-30 blur-3xl sm:h-72 sm:w-72" />
           <div className="absolute right-1/4 top-40 h-64 w-64 rounded-full bg-indigo-200 opacity-30 blur-3xl sm:h-96 sm:w-96" />
@@ -25,9 +23,7 @@ export default function Home() {
         </div>
 
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-24 lg:px-8">
-          {/* Hero Content */}
           <div className="text-center">
-            {/* Badge */}
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 sm:mb-8 sm:px-4 sm:py-2 sm:text-sm">
               <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               Automate Your Document Workflow
@@ -51,7 +47,7 @@ export default function Home() {
             {/* CTA Buttons */}
             <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
               <Link
-                href="/model-crator"
+                href="/model-creator"
                 className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-blue-600 to-indigo-600 px-6 py-3 text-base font-semibold text-white shadow-xl shadow-blue-500/30 transition-all hover:scale-105 hover:shadow-blue-500/40 sm:w-auto sm:gap-3 sm:rounded-2xl sm:px-8 sm:py-4 sm:text-lg"
               >
                 <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -177,7 +173,7 @@ export default function Home() {
                   Start creating professional documents in minutes.
                 </p>
                 <Link
-                  href="/model-crator"
+                  href="/model-creator"
                   className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-blue-600 shadow-xl transition-all hover:scale-105 sm:gap-3 sm:rounded-2xl sm:px-8 sm:py-4 sm:text-lg"
                 >
                   <FileText className="h-4 w-4 sm:h-5 sm:w-5" />

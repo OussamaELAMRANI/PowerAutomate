@@ -30,9 +30,7 @@ export default function ModelCreatorPage() {
   };
 
   const handleReset = useCallback(() => {
-    // Increment key to force re-mount of form, clearing all state
     setResetKey((prev) => prev + 1);
-    // Mark as reset to clear the preview without calling server action
     setIsReset(true);
   }, []);
 
@@ -56,7 +54,7 @@ export default function ModelCreatorPage() {
           {/* Main Content - Responsive Grid */}
           <div className="grid gap-6 lg:grid-cols-[380px_1fr] xl:grid-cols-[420px_1fr] lg:gap-8">
             {/* Form Section */}
-            <div className="order-1 lg:order-none">
+            <div className="order-1 lg:order-0">
               <DocumentForm
                 key={resetKey}
                 onSubmit={handleFormSubmit}
@@ -69,7 +67,7 @@ export default function ModelCreatorPage() {
             </div>
 
             {/* Preview Section */}
-            <div className="order-2 lg:order-none min-h-125 sm:min-h-150 lg:min-h-200">
+            <div className="order-2 lg:order-0 min-h-125 sm:min-h-150 lg:min-h-200">
               <DocumentPreview
                 fileBase64={
                   !isReset && state.success ? state.fileBase64 : undefined
