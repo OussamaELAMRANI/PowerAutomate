@@ -20,14 +20,14 @@ export interface FileDropzoneProps {
 
 export const FileDropzone: React.FC<FileDropzoneProps> = ({
   accept = { "image/*": [".png", ".jpg", ".jpeg", ".gif", ".svg"] },
-  maxSize = 5 * 1024 * 1024, // 5MB
+  maxSize,
   onFileSelect,
   value,
   hasError,
   disabled,
   className,
   placeholder = "Drop your file here, or click to browse",
-  description = "PNG, JPG, GIF up to 5MB",
+  description = "PNG, JPG, GIF, or SVG",
 }) => {
   const [preview, setPreview] = useState<string | null>(null);
 
