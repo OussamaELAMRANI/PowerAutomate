@@ -67,6 +67,8 @@ export async function generateDocument(
 
     let logoData = null;
     let imageMimeType = "image/png";
+    let finalWidth = 0;
+    let finalHeight = 0;
 
     if (logoFile && logoFile.size > 0) {
       const arrayBuffer = await logoFile.arrayBuffer();
@@ -85,24 +87,26 @@ export async function generateDocument(
       } else {
         imageMimeType = "image/png";
       }
+
+      // Get image dimensions only if logo is provided
+      const dimensions = sizeOf(logoData);
+      const originalWidth = dimensions.width || 100;
+      const originalHeight = dimensions.height || 100;
+
+      // Define Header Constraints (The max space available in your DOCX table)
+      const MAX_WIDTH = 150; // pixels (approx 4cm)
+      const MAX_HEIGHT = 60; // pixels (approx 1.5cm)
+
+      // Calculate Scale Ratio (Contain logic)
+      const widthRatio = MAX_WIDTH / originalWidth;
+      const heightRatio = MAX_HEIGHT / originalHeight;
+      const scale = Math.min(widthRatio, heightRatio);
+
+      finalWidth = Math.round(originalWidth * scale);
+      finalHeight = Math.round(originalHeight * scale);
     }
 
-    const dimensions = sizeOf(logoData as Buffer);
-    const originalWidth = dimensions.width || 100;
-    const originalHeight = dimensions.height || 100;
-
-    // 2. Define your Header Constraints (The max space available in your DOCX table)
-    const MAX_WIDTH = 150; // pixels (approx 4cm)
-    const MAX_HEIGHT = 60; // pixels (approx 1.5cm)
-
-    // 3. Calculate Scale Ratio (Contain logic)
-    // This math finds the largest size that fits BOTH width and height limits
-    const widthRatio = MAX_WIDTH / originalWidth;
-    const heightRatio = MAX_HEIGHT / originalHeight;
-    const scale = Math.min(widthRatio, heightRatio); // Use the smaller ratio to ensure it fits
-
-    // 4. Data Object for Replacement
-    // Configure image with proper dimensions and right alignment
+    // Data Object for Replacement
     const data: TemplateData = {
       name: name || "",
       ceo_name,
@@ -113,13 +117,12 @@ export async function generateDocument(
             _type: "image",
             source: logoData,
             format: imageMimeType,
-            width: Math.round(originalWidth * scale),
-            height: Math.round(originalHeight * scale),
+            width: finalWidth,
+            height: finalHeight,
           }
         : "",
     };
 
-    
     // 5. Process the Template
     const handler = new TemplateHandler();
     const docBlob = await handler.process(templateBuffer, data);
