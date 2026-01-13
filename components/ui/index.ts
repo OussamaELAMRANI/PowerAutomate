@@ -12,6 +12,11 @@ export {
 export { FormField, type FormFieldProps } from "./FormField";
 export { Input, type InputProps } from "./Input";
 export { Select, type SelectProps, type SelectOption } from "./Select";
+export {
+  MultiSelect,
+  type MultiSelectProps,
+  type MultiSelectOption,
+} from "./MultiSelect";
 export { FileDropzone, type FileDropzoneProps } from "./FileDropzone";
 export { Badge, type BadgeProps } from "./Badge";
 export { DatePicker, type DatePickerProps } from "./DatePicker";

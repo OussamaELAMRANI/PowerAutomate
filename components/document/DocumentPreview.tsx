@@ -20,15 +20,16 @@ import {
   Loader2,
 } from "lucide-react";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
+import type { GeneratedDocument } from "@/app/actions/send-model-entries";
 
 export interface DocumentPreviewProps {
-  fileBase64?: string;
+  documents?: GeneratedDocument[];
   isLoading?: boolean;
   className?: string;
 }
 
 export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
-  fileBase64,
+  documents,
   isLoading,
   className,
 }) => {
@@ -36,7 +37,13 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [docId, setDocId] = useState<string | null>(null);
   const [externalLoading, setExternalLoading] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedViewerIndex, setSelectedViewerIndex] = useState(0);
+  const [selectedDocIndex, setSelectedDocIndex] = useState(0);
+
+  // Get current document
+  const currentDocument = documents?.[selectedDocIndex];
+  const fileBase64 = currentDocument?.fileBase64;
+  const hasDocuments = documents && documents.length > 0;
 
   // Generate unique document ID
   const generateDocId = useCallback(() => {
@@ -71,7 +78,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   // Render enhanced docx-preview
   useEffect(() => {
     async function renderPreview() {
-      if (fileBase64 && containerRef.current && selectedIndex === 0) {
+      if (fileBase64 && containerRef.current && selectedViewerIndex === 0) {
         try {
           const byteCharacters = atob(fileBase64);
           const byteNumbers = new Array(byteCharacters.length);
@@ -104,19 +111,19 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
     }
 
     renderPreview();
-  }, [fileBase64, selectedIndex]);
+  }, [fileBase64, selectedViewerIndex, selectedDocIndex]);
 
   // Upload for external viewers when tab changes
   useEffect(() => {
-    if (fileBase64 && selectedIndex === 1 && !docId) {
+    if (fileBase64 && selectedViewerIndex === 1 && !docId) {
       uploadForExternalViewer();
     }
-  }, [fileBase64, selectedIndex, docId, uploadForExternalViewer]);
+  }, [fileBase64, selectedViewerIndex, docId, uploadForExternalViewer]);
 
-  // Reset docId when fileBase64 changes
+  // Reset docId when fileBase64 or selectedDocIndex changes
   useEffect(() => {
     setDocId(null);
-  }, [fileBase64]);
+  }, [fileBase64, selectedDocIndex]);
 
   // External viewer URLs - memoized to prevent recalculation
   const googleViewerUrl = useMemo(() => {
@@ -132,7 +139,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
 
   const toggleFullscreen = () => setIsFullscreen(!isFullscreen);
 
-  const tabs = [
+  const viewerTabs = [
     { name: "Enhanced", icon: FileCode, description: "Local preview" },
     { name: "Google Docs", icon: Globe, description: "Clean view" },
   ];
@@ -164,7 +171,9 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
               Document Preview
             </h2>
             <p className="text-xs text-gray-500 hidden sm:block">
-              Multiple viewing options available
+              {hasDocuments && documents.length > 1
+                ? `${documents.length} documents generated`
+                : "Multiple viewing options available"}
             </p>
           </div>
         </div>
@@ -196,11 +205,38 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
         </div>
       </div>
 
+      {/* Document Selection Tabs - Only show when multiple documents */}
+      {hasDocuments && documents.length > 1 && (
+        <div className="flex border-b border-gray-200 bg-linear-to-r from-blue-50 to-indigo-50 px-4 sm:px-6">
+          {documents.map((doc, index) => (
+            <button
+              key={doc.modelId}
+              onClick={() => setSelectedDocIndex(index)}
+              className={cn(
+                "relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all",
+                selectedDocIndex === index
+                  ? "text-blue-700"
+                  : "text-gray-500 hover:text-gray-700"
+              )}
+            >
+              <FileText className="h-4 w-4" />
+              <span>{doc.modelName}</span>
+              {selectedDocIndex === index && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Tab Navigation */}
-      {fileBase64 && (
-        <TabGroup selectedIndex={selectedIndex} onChange={setSelectedIndex}>
+      {hasDocuments && (
+        <TabGroup
+          selectedIndex={selectedViewerIndex}
+          onChange={setSelectedViewerIndex}
+        >
           <TabList className="flex border-b border-gray-200 bg-white/80 px-2 sm:px-4">
-            {tabs.map((tab) => (
+            {viewerTabs.map((tab) => (
               <Tab
                 key={tab.name}
                 className={({ selected }) =>
@@ -232,7 +268,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
               static
               className={cn(
                 "h-full overflow-auto focus:outline-none",
-                selectedIndex !== 0 && "hidden"
+                selectedViewerIndex !== 0 && "hidden"
               )}
             >
               <div className="p-3 sm:p-6 min-h-100 sm:min-h-150">
@@ -253,7 +289,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
               static
               className={cn(
                 "h-full focus:outline-none",
-                selectedIndex !== 1 && "hidden"
+                selectedViewerIndex !== 1 && "hidden"
               )}
             >
               <div className="h-full min-h-100 sm:min-h-150 p-3 sm:p-4">
@@ -296,7 +332,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
       )}
 
       {/* Empty/Loading State (when no file) */}
-      {!fileBase64 && (
+      {!hasDocuments && (
         <div className="flex-1 p-3 sm:p-6">
           <div className="mx-auto max-w-3xl">
             <div
@@ -319,7 +355,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
                     see a live preview with multiple viewing options.
                   </p>
                   <div className="mt-6 flex flex-wrap justify-center gap-3">
-                    {tabs.map((tab) => (
+                    {viewerTabs.map((tab) => (
                       <div
                         key={tab.name}
                         className="flex items-center gap-2 rounded-full bg-gray-50 px-4 py-2 text-xs text-gray-600"

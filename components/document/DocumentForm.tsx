@@ -19,7 +19,7 @@ import {
   CardFooter,
   FormField,
   Input,
-  Select,
+  MultiSelect,
   FileDropzone,
   Badge,
   DatePicker,
@@ -33,13 +33,14 @@ import {
   Download,
   RotateCcw,
 } from "lucide-react";
+import type { GeneratedDocument } from "@/app/actions/send-model-entries";
 
 export interface DocumentFormProps {
   onSubmit: (data: FormData) => void;
   onReset?: () => void;
   isPending: boolean;
   hasDocument: boolean;
-  fileBase64?: string;
+  documents?: GeneratedDocument[];
   error?: string;
 }
 
@@ -48,7 +49,7 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
   onReset,
   isPending,
   hasDocument,
-  fileBase64,
+  documents,
   error,
 }) => {
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -66,7 +67,7 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
     resolver: zodResolver(modelFormSchema),
     mode: "onChange",
     defaultValues: {
-      model: "",
+      models: [],
       companyName: "",
       ceoName: "",
       releasedBy: "",
@@ -74,14 +75,14 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
     },
   });
 
-  const selectedModel = watch("model");
+  const selectedModels = watch("models");
 
-  // Re-validate companyName when model changes to clear errors for model_2
+  // Re-validate companyName when models change to clear errors
   React.useEffect(() => {
-    if (selectedModel) {
+    if (selectedModels && selectedModels.length > 0) {
       trigger("companyName");
     }
-  }, [selectedModel, trigger]);
+  }, [selectedModels, trigger]);
 
   const handleReset = () => {
     reset();
@@ -91,7 +92,7 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
 
   const handleFormSubmit = (data: ModelFormData) => {
     const formData = new FormData();
-    formData.append("model", data.model);
+    formData.append("models", JSON.stringify(data.models));
     if (data.companyName) formData.append("name", data.companyName);
     formData.append("ceo_name", data.ceoName);
     formData.append("releasedBy", data.releasedBy);
@@ -102,9 +103,12 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
     onSubmit(formData);
   };
 
-  const handleDownload = () => {
-    if (fileBase64) {
-      const byteCharacters = atob(fileBase64);
+  const handleDownload = (doc?: GeneratedDocument) => {
+    const base64ToDownload = doc?.fileBase64 || documents?.[0]?.fileBase64;
+    const modelName = doc?.modelName || documents?.[0]?.modelName || "document";
+
+    if (base64ToDownload) {
+      const byteCharacters = atob(base64ToDownload);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
         byteNumbers[i] = byteCharacters.charCodeAt(i);
@@ -116,10 +120,16 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `document-${Date.now()}.docx`;
+      a.download = `${modelName
+        .replace(/\s+/g, "-")
+        .toLowerCase()}-${Date.now()}.docx`;
       a.click();
       URL.revokeObjectURL(url);
     }
+  };
+
+  const handleDownloadAll = () => {
+    documents?.forEach((doc) => handleDownload(doc));
   };
 
   return (
@@ -144,44 +154,48 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
         <CardContent className="space-y-5">
           {/* Model Selection */}
           <FormField
-            label="Template Model"
-            name="model"
+            label="Template Models"
+            name="models"
             required
-            error={errors.model?.message}
-            description="Select the document template to use"
+            error={errors.models?.message}
+            description="Select one or more document templates"
           >
-            <Select
+            <MultiSelect
               options={MODEL_TEMPLATES}
-              value={selectedModel}
-              onChange={(value) => setValue("model", value)}
-              placeholder="Select a template..."
-              hasError={!!errors.model}
+              value={selectedModels}
+              onChange={(value) => setValue("models", value)}
+              placeholder="Select templates..."
+              hasError={!!errors.models}
             />
           </FormField>
 
-          {/* Selected Model Info */}
-          {selectedModel && (
+          {/* Selected Models Info */}
+          {selectedModels.length > 0 && (
             <div className="rounded-xl bg-blue-50 p-4 border border-blue-100">
-              <div className="flex items-center gap-2 mb-1">
-                <Badge variant="info">Selected</Badge>
-                <span className="font-medium text-blue-900">
-                  {MODEL_TEMPLATES.find((m) => m.id === selectedModel)?.name}
-                </span>
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="info">{selectedModels.length} Selected</Badge>
               </div>
-              <p className="text-sm text-blue-700">
-                {
-                  MODEL_TEMPLATES.find((m) => m.id === selectedModel)
-                    ?.description
-                }
-              </p>
+              <div className="space-y-2">
+                {selectedModels.map((modelId) => {
+                  const model = MODEL_TEMPLATES.find((m) => m.id === modelId);
+                  return model ? (
+                    <div key={modelId} className="text-sm text-blue-700">
+                      <span className="font-medium">{model.name}</span>
+                      {model.description && (
+                        <span className="text-blue-600">
+                          {" "}
+                          - {model.description}
+                        </span>
+                      )}
+                    </div>
+                  ) : null;
+                })}
+              </div>
             </div>
           )}
 
-          {/* Company Name */}
-          {MODEL_TEMPLATES.find((m) => m.id === selectedModel)?.file ===
-          "model_2.docx" ? (
-            <></>
-          ) : (
+          {/* Company Name - only show if model_1 is selected */}
+          {selectedModels.includes("model_1") && (
             <FormField
               label="Company Name"
               name="companyName"
@@ -279,19 +293,23 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
             size="lg"
             leftIcon={<Sparkles className="h-5 w-5" />}
           >
-            {isPending ? "Generating..." : "Generate Document"}
+            {isPending
+              ? "Generating..."
+              : `Generate ${
+                  selectedModels.length > 1 ? "Documents" : "Document"
+                }`}
           </Button>
 
-          {hasDocument && (
+          {hasDocument && documents && documents.length > 0 && (
             <div className="flex w-full gap-2">
               <Button
                 type="button"
                 variant="outline"
                 className="flex-1"
-                onClick={handleDownload}
+                onClick={handleDownloadAll}
                 leftIcon={<Download className="h-5 w-5" />}
               >
-                Download
+                Download {documents.length > 1 ? "All" : ""}
               </Button>
               <Button
                 type="button"

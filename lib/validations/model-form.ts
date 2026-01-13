@@ -1,9 +1,9 @@
 import { z } from "zod";
 
-// Base schema with companyName conditionally required based on model
+// Base schema with companyName conditionally required based on models
 export const modelFormSchema = z
   .object({
-    model: z.string().min(1, "Please select a model template"),
+    models: z.array(z.string()).min(1, "Please select at least one template"),
     companyName: z.string().optional(),
     ceoName: z
       .string()
@@ -16,8 +16,8 @@ export const modelFormSchema = z
     documentDate: z.string().min(1, "Please select a date"),
   })
   .superRefine((data, ctx) => {
-    // Company name is required only for model_1
-    if (data.model === "model_1") {
+    // Company name is required if model_1 is selected
+    if (data.models.includes("model_1")) {
       if (!data.companyName || data.companyName.length < 2) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -41,7 +41,7 @@ export const MODEL_TEMPLATES = [
   },
   {
     id: "model_2",
-    name: "Model 2 - Tempate 2",
+    name: "Model 2 - Template 2",
     description: "without the company name",
     file: "model_2.docx",
     disabled: false,

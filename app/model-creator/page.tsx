@@ -12,7 +12,7 @@ import { DocumentForm, DocumentPreview } from "@/components/document";
 
 const initialState: GenerateState = {
   success: false,
-  fileBase64: undefined,
+  documents: undefined,
   error: undefined,
 };
 
@@ -46,8 +46,8 @@ export default function ModelCreatorPage() {
               Document Creator
             </h1>
             <p className="mt-2 text-sm text-gray-600 sm:text-base lg:text-lg">
-              Select a template, fill in your details, and generate your
-              document
+              Select templates, fill in your details, and generate your
+              documents
             </p>
           </div>
 
@@ -61,7 +61,7 @@ export default function ModelCreatorPage() {
                 onReset={handleReset}
                 isPending={isPending}
                 hasDocument={!isReset && state.success}
-                fileBase64={!isReset ? state.fileBase64 : undefined}
+                documents={!isReset ? state.documents : undefined}
                 error={!isReset ? state.error : undefined}
               />
             </div>
@@ -69,8 +69,8 @@ export default function ModelCreatorPage() {
             {/* Preview Section */}
             <div className="order-2 lg:order-0 min-h-125 sm:min-h-150 lg:min-h-200">
               <DocumentPreview
-                fileBase64={
-                  !isReset && state.success ? state.fileBase64 : undefined
+                documents={
+                  !isReset && state.success ? state.documents : undefined
                 }
                 isLoading={isPending}
                 className="h-full"
