@@ -4,7 +4,7 @@ import React, { useEffect, useRef } from "react";
 import { renderAsync } from "docx-preview";
 
 export default function DocxViewer({ fileBuffer } : {fileBuffer:Buffer}) {
-  const containerRef = useRef<HTMLElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (fileBuffer && containerRef.current) {

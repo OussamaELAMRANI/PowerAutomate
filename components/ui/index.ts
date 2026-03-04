@@ -20,3 +20,4 @@ export {
 export { FileDropzone, type FileDropzoneProps } from "./FileDropzone";
 export { Badge, type BadgeProps } from "./Badge";
 export { DatePicker, type DatePickerProps } from "./DatePicker";
+export { Toast, type ToastProps } from "./Toast";
