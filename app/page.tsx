@@ -26,7 +26,7 @@ export default function Home() {
           <div className="text-center">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 sm:mb-8 sm:px-4 sm:py-2 sm:text-sm">
               <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              Automate Your Document Workflow
+              Automate Your Documents Workflow
             </div>
 
             {/* Main Heading */}
@@ -70,7 +70,7 @@ export default function Home() {
                 Why PowerAutomate?
               </h2>
               <p className="text-base text-gray-600 sm:text-lg">
-                Everything you need to automate your document workflow
+                Everything you need to automate your documents workflow
               </p>
             </div>
 
