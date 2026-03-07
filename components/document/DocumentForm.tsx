@@ -1,13 +1,12 @@
 "use client";
 "use no memo";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   modelFormSchema,
   ModelFormData,
-  MODEL_TEMPLATES,
 } from "@/lib/validations/model-form";
 import {
   Button,
@@ -21,27 +20,41 @@ import {
   Input,
   MultiSelect,
   FileDropzone,
-  Badge,
   DatePicker,
 } from "@/components/ui";
 import {
   FileText,
   Building2,
-  User,
   UserCheck,
   Sparkles,
   Download,
   RotateCcw,
+  Hash,
+  User,
+  MapPin,
+  Globe,
+  FolderOpen,
 } from "lucide-react";
-import type { GeneratedDocument } from "@/app/actions/send-model-entries";
+
+export interface StandardModelFolder {
+  id: string;
+  name: string;
+  documents: { id: string; name: string; fileName: string }[];
+}
 
 export interface DocumentFormProps {
   onSubmit: (data: FormData) => void;
   onReset?: () => void;
   isPending: boolean;
   hasDocument: boolean;
-  documents?: GeneratedDocument[];
+  zipBase64?: string;
   error?: string;
+  /** Called when user clicks a folder pill */
+  onFolderClick?: (folder: StandardModelFolder) => void;
+  /** Active folder (highlighted in the list) */
+  activeFolderId?: string | null;
+  /** Externally managed set of excluded doc IDs */
+  excludedDocIds?: Set<string>;
 }
 
 export const DocumentForm: React.FC<DocumentFormProps> = ({
@@ -49,10 +62,25 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
   onReset,
   isPending,
   hasDocument,
-  documents,
+  zipBase64,
   error,
+  onFolderClick,
+  activeFolderId,
+  excludedDocIds,
 }) => {
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [folders, setFolders] = useState<StandardModelFolder[]>([]);
+  const [foldersLoaded, setFoldersLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/standard-models")
+      .then((res) => res.json())
+      .then((data) => {
+        setFolders(data.folders || []);
+        setFoldersLoaded(true);
+      })
+      .catch(() => setFoldersLoaded(true));
+  }, []);
 
   const {
     register,
@@ -61,28 +89,44 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
     setValue,
     control,
     reset,
-    trigger,
     formState: { errors },
   } = useForm<ModelFormData>({
     resolver: zodResolver(modelFormSchema),
     mode: "onChange",
     defaultValues: {
-      models: [],
+      folders: [],
+      docVersion: "",
+      createdBy: "",
+      approvedBy: "",
+      docDate: "",
       companyName: "",
-      ceoName: "",
-      releasedBy: "",
-      documentDate: "",
+      companyStreet: "",
+      companyZip: "",
+      companyCity: "",
+      companyCountry: "",
+      companyAddressLine: "",
     },
   });
 
-  const selectedModels = watch("models");
+  const selectedFolders = watch("folders");
 
-  // Re-validate companyName when models change to clear errors
-  React.useEffect(() => {
-    if (selectedModels && selectedModels.length > 0) {
-      trigger("companyName");
-    }
-  }, [selectedModels, trigger]);
+  const folderOptions = useMemo(
+    () => folders.map((f) => ({ id: f.id, name: f.name })),
+    [folders]
+  );
+
+  const selectedFolderObjects = useMemo(
+    () => folders.filter((f) => selectedFolders?.includes(f.id)),
+    [folders, selectedFolders]
+  );
+
+  // Count included docs (excluding excluded ones)
+  const totalDocs = selectedFolderObjects.reduce((acc, f) => {
+    const included = f.documents.filter(
+      (d) => !excludedDocIds?.has(d.id)
+    ).length;
+    return acc + included;
+  }, 0);
 
   const handleReset = () => {
     reset();
@@ -92,44 +136,47 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
 
   const handleFormSubmit = (data: ModelFormData) => {
     const formData = new FormData();
-    formData.append("models", JSON.stringify(data.models));
-    if (data.companyName) formData.append("name", data.companyName);
-    formData.append("ceo_name", data.ceoName);
-    formData.append("releasedBy", data.releasedBy);
-    formData.append("doc_date", data.documentDate);
-    if (logoFile) {
-      formData.append("logo", logoFile);
+    formData.append("folders", JSON.stringify(data.folders));
+    // Pass excluded doc IDs so server can skip them
+    if (excludedDocIds && excludedDocIds.size > 0) {
+      formData.append(
+        "excludedDocIds",
+        JSON.stringify(Array.from(excludedDocIds))
+      );
     }
+    formData.append("docVersion", data.docVersion);
+    formData.append("createdBy", data.createdBy);
+    formData.append("approvedBy", data.approvedBy);
+    formData.append("docDate", data.docDate);
+    formData.append("companyName", data.companyName);
+    if (data.companyStreet) formData.append("companyStreet", data.companyStreet);
+    if (data.companyZip) formData.append("companyZip", data.companyZip);
+    if (data.companyCity) formData.append("companyCity", data.companyCity);
+    if (data.companyCountry)
+      formData.append("companyCountry", data.companyCountry);
+    if (data.companyAddressLine)
+      formData.append("companyAddressLine", data.companyAddressLine);
+    if (logoFile) formData.append("logo", logoFile);
     onSubmit(formData);
   };
 
-  const handleDownload = (doc?: GeneratedDocument) => {
-    const base64ToDownload = doc?.fileBase64 || documents?.[0]?.fileBase64;
-    const modelName = doc?.modelName || documents?.[0]?.modelName || "document";
-
-    if (base64ToDownload) {
-      const byteCharacters = atob(base64ToDownload);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], {
-        type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${modelName
-        .replace(/\s+/g, "-")
-        .toLowerCase()}-${Date.now()}.docx`;
-      a.click();
-      URL.revokeObjectURL(url);
+  const handleDownloadZip = () => {
+    if (!zipBase64) return;
+    const byteCharacters = atob(zipBase64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
     }
-  };
-
-  const handleDownloadAll = () => {
-    documents?.forEach((doc) => handleDownload(doc));
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: "application/zip" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `standard-models-${Date.now()}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -144,138 +191,248 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
               Document Generator
             </CardTitle>
             <CardDescription className="text-xs sm:text-sm">
-              Fill in the details to generate your document
+              Select Standard Model folders, fill placeholders, download as ZIP
             </CardDescription>
           </div>
         </div>
       </CardHeader>
 
       <form onSubmit={handleSubmit(handleFormSubmit)}>
-        <CardContent className="space-y-5">
-          {/* Model Selection */}
-          <FormField
-            label="Template Models"
-            name="models"
-            required
-            error={errors.models?.message}
-            description="Select one or more document templates"
-          >
-            <MultiSelect
-              options={MODEL_TEMPLATES}
-              value={selectedModels}
-              onChange={(value) => setValue("models", value)}
-              placeholder="Select templates..."
-              hasError={!!errors.models}
-            />
-          </FormField>
-
-          {/* Selected Models Info */}
-          {selectedModels.length > 0 && (
-            <div className="rounded-xl bg-blue-50 p-4 border border-blue-100">
-              <div className="flex items-center gap-2 mb-2">
-                <Badge variant="info">{selectedModels.length} Selected</Badge>
-              </div>
-              <div className="space-y-2">
-                {selectedModels.map((modelId) => {
-                  const model = MODEL_TEMPLATES.find((m) => m.id === modelId);
-                  return model ? (
-                    <div key={modelId} className="text-sm text-blue-700">
-                      <span className="font-medium">{model.name}</span>
-                      {model.description && (
-                        <span className="text-blue-600">
-                          {" "}
-                          - {model.description}
-                        </span>
-                      )}
-                    </div>
-                  ) : null;
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Company Name - only show if model_1 is selected */}
-          {selectedModels.includes("model_1") && (
+        <CardContent className="space-y-6">
+          {/* ═══ Standard Model Selection ═══ */}
+          <div>
+            <h3 className="flex items-center gap-2 text-sm font-bold text-gray-700 uppercase tracking-wider mb-3">
+              <FolderOpen className="h-4 w-4 text-blue-500" />
+              Standard Models
+            </h3>
             <FormField
-              label="Company Name"
-              name="companyName"
+              label="Select Folders"
+              name="folders"
               required
-              error={errors.companyName?.message}
+              error={errors.folders?.message}
+              description="Choose model folders to process"
             >
-              <Input
-                {...register("companyName")}
-                placeholder="Enter company name"
-                leftIcon={<Building2 className="h-5 w-5" />}
-                hasError={!!errors.companyName}
+              <MultiSelect
+                options={folderOptions}
+                value={selectedFolders || []}
+                onChange={(value) => setValue("folders", value)}
+                placeholder={
+                  foldersLoaded
+                    ? "Select standard model folders..."
+                    : "Loading folders..."
+                }
+                hasError={!!errors.folders}
               />
             </FormField>
-          )}
 
-          {/* CEO Name */}
-          <FormField
-            label="CEO Name"
-            name="ceoName"
-            required
-            error={errors.ceoName?.message}
-          >
-            <Input
-              {...register("ceoName")}
-              placeholder="Enter CEO name"
-              leftIcon={<User className="h-5 w-5" />}
-              hasError={!!errors.ceoName}
-            />
-          </FormField>
+            {/* Clickable folder pills */}
+            {selectedFolderObjects.length > 0 && (
+              <div className="mt-3 space-y-1.5 max-h-44 overflow-y-auto custom-scrollbar">
+                {selectedFolderObjects.map((folder) => {
+                  const includedCount = folder.documents.filter(
+                    (d) => !excludedDocIds?.has(d.id)
+                  ).length;
+                  const isActive = activeFolderId === folder.id;
+                  return (
+                    <button
+                      key={folder.id}
+                      type="button"
+                      onClick={() => onFolderClick?.(folder)}
+                      className={`flex w-full items-center gap-3 rounded-xl border px-4 py-2.5 transition-all cursor-pointer ${
+                        isActive
+                          ? "border-blue-400 bg-blue-50 ring-2 ring-blue-200 shadow-md"
+                          : "border-blue-100 bg-blue-50/50 hover:border-blue-300 hover:bg-blue-50"
+                      }`}
+                    >
+                      <FolderOpen
+                        className={`h-4 w-4 shrink-0 ${
+                          isActive ? "text-blue-600" : "text-blue-400"
+                        }`}
+                      />
+                      <span
+                        className={`flex-1 text-left text-sm font-medium ${
+                          isActive ? "text-blue-800" : "text-gray-700"
+                        }`}
+                      >
+                        {folder.name}
+                      </span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          includedCount < folder.documents.length
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-blue-100 text-blue-700"
+                        }`}
+                      >
+                        {includedCount}/{folder.documents.length}
+                      </span>
+                    </button>
+                  );
+                })}
+                <p className="text-xs text-gray-400 pt-1">
+                  Click a folder to view & filter its documents →
+                </p>
+              </div>
+            )}
+          </div>
 
-          {/* Released By */}
-          <FormField
-            label="Released By"
-            name="releasedBy"
-            required
-            error={errors.releasedBy?.message}
-          >
-            <Input
-              {...register("releasedBy")}
-              placeholder="Enter department or person"
-              leftIcon={<UserCheck className="h-5 w-5" />}
-              hasError={!!errors.releasedBy}
-            />
-          </FormField>
+          {/* ═══ Header Placeholder ═══ */}
+          <div>
+            <h3 className="flex items-center gap-2 text-sm font-bold text-gray-700 uppercase tracking-wider mb-3">
+              <FileText className="h-4 w-4 text-purple-500" />
+              Header
+            </h3>
+            <FormField
+              label="Company Logo"
+              name="logo"
+              description="Optional — replaces {{Logo}} placeholder"
+            >
+              <FileDropzone
+                onFileSelect={setLogoFile}
+                value={logoFile}
+                accept={{ "image/*": [".png", ".jpg", ".jpeg", ".svg"] }}
+                placeholder="Drop your logo here"
+                description="PNG, JPG, or SVG up to 5MB"
+              />
+            </FormField>
+          </div>
 
-          {/* Document Date */}
-          <FormField
-            label="Document Date"
-            name="documentDate"
-            required
-            error={errors.documentDate?.message}
-          >
-            <Controller
-              name="documentDate"
-              control={control}
-              render={({ field }) => (
-                <DatePicker
-                  value={field.value}
-                  onChange={field.onChange}
-                  placeholder="Select document date"
-                  hasError={!!errors.documentDate}
+          {/* ═══ Footer Metadata ═══ */}
+          <div>
+            <h3 className="flex items-center gap-2 text-sm font-bold text-gray-700 uppercase tracking-wider mb-3">
+              <Hash className="h-4 w-4 text-indigo-500" />
+              Footer Metadata
+            </h3>
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  label="Document Version"
+                  name="docVersion"
+                  required
+                  error={errors.docVersion?.message}
+                >
+                  <Input
+                    {...register("docVersion")}
+                    placeholder="e.g. v1.0"
+                    leftIcon={<Hash className="h-4 w-4" />}
+                    hasError={!!errors.docVersion}
+                  />
+                </FormField>
+                <FormField
+                  label="Document Date"
+                  name="docDate"
+                  required
+                  error={errors.docDate?.message}
+                >
+                  <Controller
+                    name="docDate"
+                    control={control}
+                    render={({ field }) => (
+                      <DatePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Select date"
+                        hasError={!!errors.docDate}
+                      />
+                    )}
+                  />
+                </FormField>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  label="Created By"
+                  name="createdBy"
+                  required
+                  error={errors.createdBy?.message}
+                >
+                  <Input
+                    {...register("createdBy")}
+                    placeholder="Author name"
+                    leftIcon={<User className="h-4 w-4" />}
+                    hasError={!!errors.createdBy}
+                  />
+                </FormField>
+                <FormField
+                  label="Approved By"
+                  name="approvedBy"
+                  required
+                  error={errors.approvedBy?.message}
+                >
+                  <Input
+                    {...register("approvedBy")}
+                    placeholder="Approver name"
+                    leftIcon={<UserCheck className="h-4 w-4" />}
+                    hasError={!!errors.approvedBy}
+                  />
+                </FormField>
+              </div>
+            </div>
+          </div>
+
+          {/* ═══ Company Data (Global) ═══ */}
+          <div>
+            <h3 className="flex items-center gap-2 text-sm font-bold text-gray-700 uppercase tracking-wider mb-3">
+              <Building2 className="h-4 w-4 text-orange-500" />
+              Company Data
+              <span className="text-[10px] font-medium text-gray-400 normal-case">
+                (global)
+              </span>
+            </h3>
+            <div className="space-y-4">
+              <FormField
+                label="Company Name"
+                name="companyName"
+                required
+                error={errors.companyName?.message}
+              >
+                <Input
+                  {...register("companyName")}
+                  placeholder="Acme Corp"
+                  leftIcon={<Building2 className="h-4 w-4" />}
+                  hasError={!!errors.companyName}
                 />
-              )}
-            />
-          </FormField>
-
-          {/* Logo Upload */}
-          <FormField
-            label="Company Logo"
-            name="logo"
-            description="Optional: Upload your company logo"
-          >
-            <FileDropzone
-              onFileSelect={setLogoFile}
-              value={logoFile}
-              accept={{ "image/*": [".png", ".jpg", ".jpeg", ".svg"] }}
-              placeholder="Drop your logo here"
-              description="PNG, JPG, or SVG up to 5MB"
-            />
-          </FormField>
+              </FormField>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label="Street" name="companyStreet">
+                  <Input
+                    {...register("companyStreet")}
+                    placeholder="123 Main Street"
+                    leftIcon={<MapPin className="h-4 w-4" />}
+                  />
+                </FormField>
+                <FormField label="ZIP Code" name="companyZip">
+                  <Input
+                    {...register("companyZip")}
+                    placeholder="12345"
+                  />
+                </FormField>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label="City" name="companyCity">
+                  <Input
+                    {...register("companyCity")}
+                    placeholder="Berlin"
+                  />
+                </FormField>
+                <FormField label="Country" name="companyCountry">
+                  <Input
+                    {...register("companyCountry")}
+                    placeholder="Germany"
+                    leftIcon={<Globe className="h-4 w-4" />}
+                  />
+                </FormField>
+              </div>
+              <FormField
+                label="Full Address Line"
+                name="companyAddressLine"
+                description="Combined address (auto-fills {{CompanyAddressLine}})"
+              >
+                <Input
+                  {...register("companyAddressLine")}
+                  placeholder="123 Main St, 12345 Berlin, Germany"
+                />
+              </FormField>
+            </div>
+          </div>
 
           {/* Error Display */}
           {error && (
@@ -285,7 +442,7 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
           )}
         </CardContent>
 
-        <CardFooter className="flex-col gap-3 ">
+        <CardFooter className="flex-col gap-3">
           <Button
             type="submit"
             isLoading={isPending}
@@ -295,21 +452,19 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
           >
             {isPending
               ? "Generating..."
-              : `Generate ${
-                  selectedModels.length > 1 ? "Documents" : "Document"
-                }`}
+              : `Generate ${totalDocs > 0 ? `${totalDocs} Documents` : "Documents"}`}
           </Button>
 
-          {hasDocument && documents && documents.length > 0 && (
+          {hasDocument && zipBase64 && (
             <div className="flex w-full gap-2">
               <Button
                 type="button"
                 variant="outline"
                 className="flex-1"
-                onClick={handleDownloadAll}
+                onClick={handleDownloadZip}
                 leftIcon={<Download className="h-5 w-5" />}
               >
-                Download {documents.length > 1 ? "All" : ""}
+                Download ZIP
               </Button>
               <Button
                 type="button"
@@ -327,7 +482,7 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
             <Button
               type="button"
               variant="ghost"
-              className="w-full  cursor-pointer"
+              className="w-full cursor-pointer"
               onClick={handleReset}
               leftIcon={<RotateCcw className="h-4 w-4" />}
             >

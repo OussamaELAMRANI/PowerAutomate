@@ -1,31 +1,10 @@
 "use server";
+
 import sizeOf from "image-size";
 import { TemplateData, TemplateHandler } from "easy-template-x";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { z } from "zod";
-
-// Server-side validation schema
-const serverFormSchema = z
-  .object({
-    models: z.array(z.string()).min(1, "At least one model is required"),
-    name: z.string().optional().nullable(),
-    ceo_name: z.string().min(2, "CEO name is required"),
-    releasedBy: z.string().min(2, "Released by is required"),
-    doc_date: z.string().min(1, "Date is required"),
-  })
-  .superRefine((data, ctx) => {
-    // Company name is required if model_1 is selected
-    if (data.models.includes("model_1")) {
-      if (!data.name || data.name.length < 2) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Company name must be at least 2 characters",
-          path: ["name"],
-        });
-      }
-    }
-  });
+import JSZip from "jszip";
 
 export interface GeneratedDocument {
   modelId: string;
@@ -36,43 +15,52 @@ export interface GeneratedDocument {
 export type GenerateState = {
   success: boolean;
   documents?: GeneratedDocument[];
+  zipBase64?: string;
   error?: string;
   timestamp?: string | number;
 };
+
+export interface StandardModelFolder {
+  id: string;
+  name: string;
+  documents: { id: string; name: string; fileName: string }[];
+}
 
 export async function generateDocument(
   prevState: GenerateState,
   formData: FormData
 ): Promise<GenerateState> {
   try {
-    // Parse models from FormData (sent as JSON string)
-    const modelsJson = formData.get("models") as string;
-    const models = modelsJson ? JSON.parse(modelsJson) : [];
+    // Parse form data
+    const foldersJson = formData.get("folders") as string;
+    const selectedFolders: string[] = foldersJson ? JSON.parse(foldersJson) : [];
 
-    const rawData = {
-      models,
-      name: (formData.get("name") as string) || "",
-      ceo_name: formData.get("ceo_name") as string,
-      releasedBy: formData.get("releasedBy") as string,
-      doc_date: formData.get("doc_date") as string,
-    };
-
-    const validationResult = serverFormSchema.safeParse(rawData);
-    if (!validationResult.success) {
-      const errorMessages = validationResult.error.issues
-        .map((issue) => issue.message)
-        .join(", ");
-      return { success: false, error: errorMessages };
+    if (!selectedFolders || selectedFolders.length === 0) {
+      return { success: false, error: "Please select at least one Standard Model folder" };
     }
 
-    const {
-      models: validatedModels,
-      name,
-      ceo_name,
-      releasedBy,
-      doc_date,
-    } = validationResult.data;
+    // Parse excluded doc IDs for filtering
+    const excludedJson = formData.get("excludedDocIds") as string;
+    const excludedDocIds: Set<string> = new Set(
+      excludedJson ? JSON.parse(excludedJson) : []
+    );
+
+    // Header placeholders
     const logoFile = formData.get("logo") as File | null;
+
+    // Footer metadata placeholders
+    const docVersion = (formData.get("docVersion") as string) || "";
+    const createdBy = (formData.get("createdBy") as string) || "";
+    const approvedBy = (formData.get("approvedBy") as string) || "";
+    const docDate = (formData.get("docDate") as string) || "";
+
+    // Company data (global) placeholders
+    const companyName = (formData.get("companyName") as string) || "";
+    const companyStreet = (formData.get("companyStreet") as string) || "";
+    const companyZip = (formData.get("companyZip") as string) || "";
+    const companyCity = (formData.get("companyCity") as string) || "";
+    const companyCountry = (formData.get("companyCountry") as string) || "";
+    const companyAddressLine = (formData.get("companyAddressLine") as string) || "";
 
     // Process logo if provided
     let logoData = null;
@@ -94,90 +82,120 @@ export async function generateDocument(
 
       if (supportedMimeTypes.includes(logoFile.type)) {
         imageMimeType = logoFile.type;
-      } else {
-        imageMimeType = "image/png";
       }
 
       const dimensions = sizeOf(logoData);
       const originalWidth = dimensions.width || 100;
       const originalHeight = dimensions.height || 100;
-
       const MAX_WIDTH = 150;
       const MAX_HEIGHT = 60;
-
-      const widthRatio = MAX_WIDTH / originalWidth;
-      const heightRatio = MAX_HEIGHT / originalHeight;
-      const scale = Math.min(widthRatio, heightRatio);
-
+      const scale = Math.min(MAX_WIDTH / originalWidth, MAX_HEIGHT / originalHeight);
       finalWidth = Math.round(originalWidth * scale);
       finalHeight = Math.round(originalHeight * scale);
     }
 
-    // Generate documents for each selected model
-    const generatedDocuments: GeneratedDocument[] = [];
-    const handler = new TemplateHandler();
-
-    const modelNames: Record<string, string> = {
-      model_1: "Model 1",
-      model_2: "Model 2",
+    // Build template data with all placeholder categories
+    const templateData: TemplateData = {
+      // Header
+      Logo: logoData
+        ? {
+            _type: "image",
+            source: logoData,
+            format: imageMimeType,
+            width: finalWidth,
+            height: finalHeight,
+          }
+        : "",
+      // Footer Metadata
+      DocVersion: docVersion,
+      CreatedBy: createdBy,
+      ApprovedBy: approvedBy,
+      DocDate: docDate,
+      // Company Data (global)
+      CompanyName: companyName,
+      CompanyStreet: companyStreet,
+      CompanyZip: companyZip,
+      CompanyCity: companyCity,
+      CompanyCountry: companyCountry,
+      CompanyAddressLine: companyAddressLine,
     };
 
-    for (const model of validatedModels) {
-      const templateFileName = `${model}.docx`;
-      const templatePath = path.join(
+    const handler = new TemplateHandler();
+    const zip = new JSZip();
+    const generatedDocuments: GeneratedDocument[] = [];
+
+    // Process each selected folder
+    for (const folderId of selectedFolders) {
+      const folderPath = path.join(
         process.cwd(),
         "templates",
-        templateFileName
+        "standard-models",
+        folderId
       );
 
-      let templateBuffer: Buffer;
-      try {
-        templateBuffer = await readFile(templatePath);
-      } catch {
-        return {
-          success: false,
-          error: `Template "${templateFileName}" not found.`,
-        };
+      // Path traversal check
+      const resolved = path.resolve(folderPath);
+      if (!resolved.startsWith(path.resolve(path.join(process.cwd(), "templates")))) {
+        return { success: false, error: "Invalid folder path" };
       }
 
-      const data: TemplateData = {
-        name: name || "",
-        ceo_name,
-        releasedBy,
-        doc_date,
-        logo: logoData
-          ? {
-              _type: "image",
-              source: logoData,
-              format: imageMimeType,
-              width: finalWidth,
-              height: finalHeight,
-            }
-          : "",
-      };
+      // Read all .docx files in the folder
+      const { readdirSync } = await import("node:fs");
+      let files: string[];
+      try {
+        files = readdirSync(folderPath).filter((f) => f.endsWith(".docx"));
+      } catch {
+        return { success: false, error: `Folder "${folderId}" not found` };
+      }
 
-      const docBlob = await handler.process(templateBuffer, data);
-      const buffer = Buffer.from(docBlob);
-      const base64 = buffer.toString("base64");
+      const folderName = folderId
+        .replace(/[-_]/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
 
-      generatedDocuments.push({
-        modelId: model,
-        modelName: modelNames[model] || model,
-        fileBase64: base64,
-      });
+      const zipFolder = zip.folder(folderName);
+
+      for (const fileName of files) {
+        // Build the doc ID the same way the client does: folderId-fileNameWithoutExtension
+        const docId = `${folderId}-${fileName.replace(".docx", "")}`;
+        if (excludedDocIds.has(docId)) continue; // Skip excluded docs
+
+        const templatePath = path.join(folderPath, fileName);
+
+        try {
+          const templateBuffer = await readFile(templatePath);
+          const processedDoc = await handler.process(templateBuffer, templateData);
+          zipFolder?.file(fileName, processedDoc);
+
+          generatedDocuments.push({
+            modelId: `${folderId}/${fileName}`,
+            modelName: `${folderName} - ${fileName.replace(".docx", "")}`,
+            fileBase64: Buffer.from(processedDoc).toString("base64"),
+          });
+        } catch (err) {
+          console.error(`Error processing ${fileName}:`, err);
+          return {
+            success: false,
+            error: `Failed to process template "${fileName}" in "${folderName}"`,
+          };
+        }
+      }
     }
+
+    // Generate ZIP
+    const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+    const zipBase64 = zipBuffer.toString("base64");
 
     return {
       success: true,
       documents: generatedDocuments,
+      zipBase64,
       timestamp: Date.now(),
     };
   } catch (error) {
     console.error("Error generating doc:", error);
     return {
       success: false,
-      error:
-        error instanceof Error ? error.message : "Failed to generate document",
+      error: error instanceof Error ? error.message : "Failed to generate document",
     };
   }
 }
