@@ -80,9 +80,6 @@ export function validateFolderName(name: string): ValidationResult {
 
   const trimmed = name.trim();
 
-  if (trimmed.length > 100) {
-    return { valid: false, error: "Name is too long (max 100 characters)" };
-  }
 
   for (const pattern of DANGEROUS_PATTERNS) {
     if (pattern.test(trimmed)) {
