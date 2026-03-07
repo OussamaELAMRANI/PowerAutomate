@@ -6,19 +6,19 @@
 
 // Characters that could be used for command injection or path traversal
 const DANGEROUS_PATTERNS = [
-  /\.\./g,           // Path traversal
-  /[;|&`$]/g,        // Shell command injection
-  /[\x00-\x1f]/g,    // Control characters
-  /[<>]/g,           // HTML injection
-  /['"]/g,           // Quote injection
-  /\/{2,}/g,         // Multiple slashes
-  /\\/g,             // Backslash
-  /\0/g,             // Null byte
+  /\.\./g, // Path traversal
+  /[;|&`$]/g, // Shell command injection
+  /[\x00-\x1f]/g, // Control characters
+  /[<>]/g, // HTML injection
+  /['"]/g, // Quote injection
+  /\/{2,}/g, // Multiple slashes
+  /\\/g, // Backslash
+  /\0/g, // Null byte
 ];
 
 // Allowed characters: alphanumeric, hyphens, underscores, dots, spaces, umlauts (German chars)
 const SAFE_FILENAME_REGEX = /^[a-zA-Z0-9äöüÄÖÜß\s._-]+$/;
-const SAFE_FOLDER_REGEX = /^[a-zA-Z0-9äöüÄÖÜß\s_-]+$/;
+const SAFE_FOLDER_REGEX = /^[a-zA-Z0-9äöüÄÖÜß\s,_-]+$/;
 
 export interface ValidationResult {
   valid: boolean;
@@ -36,11 +36,7 @@ export function validateFileName(name: string): ValidationResult {
 
   const trimmed = name.trim();
 
-  // Check length
-  if (trimmed.length > 200) {
-    return { valid: false, error: "File name is too long (max 200 characters)" };
-  }
-
+  
   // Check for dangerous patterns
   for (const pattern of DANGEROUS_PATTERNS) {
     if (pattern.test(trimmed)) {
@@ -55,7 +51,8 @@ export function validateFileName(name: string): ValidationResult {
   if (!SAFE_FILENAME_REGEX.test(trimmed)) {
     return {
       valid: false,
-      error: "File name can only contain letters, numbers, spaces, hyphens, underscores, and dots",
+      error:
+        "File name can only contain letters, numbers, spaces, hyphens, underscores, and dots",
     };
   }
 
@@ -80,7 +77,6 @@ export function validateFolderName(name: string): ValidationResult {
 
   const trimmed = name.trim();
 
-
   for (const pattern of DANGEROUS_PATTERNS) {
     if (pattern.test(trimmed)) {
       return {
@@ -93,7 +89,8 @@ export function validateFolderName(name: string): ValidationResult {
   if (!SAFE_FOLDER_REGEX.test(trimmed)) {
     return {
       valid: false,
-      error: "Name can only contain letters, numbers, spaces, hyphens, and underscores",
+      error:
+        "Name can only contain letters, numbers, spaces, hyphens, underscores,and commas",
     };
   }
 
@@ -129,8 +126,16 @@ export function validateFileSize(sizeBytes: number): ValidationResult {
 export function validateDocxMagic(buffer: ArrayBuffer): ValidationResult {
   const bytes = new Uint8Array(buffer.slice(0, 4));
   // PK ZIP header: 0x50 0x4B 0x03 0x04
-  if (bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04) {
+  if (
+    bytes[0] === 0x50 &&
+    bytes[1] === 0x4b &&
+    bytes[2] === 0x03 &&
+    bytes[3] === 0x04
+  ) {
     return { valid: true };
   }
-  return { valid: false, error: "File does not appear to be a valid .docx document" };
+  return {
+    valid: false,
+    error: "File does not appear to be a valid .docx document",
+  };
 }
