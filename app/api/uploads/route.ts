@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const files = formData.getAll("files") as File[];
 
     // Validate category
-    if (!category || !["roles", "appointments"].includes(category)) {
+    if (!category || !["roles", "appointments", "standard-models"].includes(category)) {
       return NextResponse.json(
         { error: "Category must be 'roles' or 'appointments'" },
         { status: 400 }
@@ -153,7 +153,7 @@ export async function DELETE(request: NextRequest) {
     const body = await request.json();
     const { category, folderName, fileName } = body;
 
-    if (!category || !["roles", "appointments"].includes(category)) {
+    if (!category || !["roles", "appointments", "standard-models"].includes(category)) {
       return NextResponse.json(
         { error: "Invalid category" },
         { status: 400 }

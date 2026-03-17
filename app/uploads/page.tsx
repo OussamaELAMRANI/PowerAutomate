@@ -24,6 +24,7 @@ import {
   Calendar,
   Loader2,
   Search,
+  Layers,
 } from "lucide-react";
 
 interface TemplateFolder {
@@ -31,6 +32,8 @@ interface TemplateFolder {
   name: string;
   documents: { id: string; name: string; fileName: string }[];
 }
+
+type Category = "roles" | "appointments" | "standard-models";
 
 interface TemplatesData {
   roles: TemplateFolder[];
@@ -48,25 +51,34 @@ export default function UploadsPage() {
     type: "success" | "error";
   } | null>(null);
 
+  const [standardModels, setStandardModels] = useState<TemplateFolder[]>([]);
   const [newRoleName, setNewRoleName] = useState("");
   const [newAppointmentName, setNewAppointmentName] = useState("");
+  const [newModelName, setNewModelName] = useState("");
   const [showNewRole, setShowNewRole] = useState(false);
   const [showNewAppointment, setShowNewAppointment] = useState(false);
+  const [showNewModel, setShowNewModel] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   // Search state
   const [roleSearch, setRoleSearch] = useState("");
   const [appointmentSearch, setAppointmentSearch] = useState("");
+  const [modelSearch, setModelSearch] = useState("");
 
   const fetchTemplates = useCallback(async () => {
     try {
-      const res = await fetch("/api/templates");
-      const data = await res.json();
+      const [templatesRes, modelsRes] = await Promise.all([
+        fetch("/api/templates"),
+        fetch("/api/standard-models"),
+      ]);
+      const templatesData = await templatesRes.json();
+      const modelsData = await modelsRes.json();
       setTemplates({
-        roles: data.roles || [],
-        appointments: data.appointments || [],
+        roles: templatesData.roles || [],
+        appointments: templatesData.appointments || [],
       });
+      setStandardModels(modelsData.folders || []);
     } catch {
       setToast({ message: "Failed to load templates", type: "error" });
     } finally {
@@ -89,11 +101,16 @@ export default function UploadsPage() {
       !appointmentSearch.trim() ||
       a.name.toLowerCase().includes(appointmentSearch.toLowerCase())
   );
+  const filteredModels = standardModels.filter(
+    (m) =>
+      !modelSearch.trim() ||
+      m.name.toLowerCase().includes(modelSearch.toLowerCase())
+  );
 
   // Client-side validate then upload
   const handleFilesUpload = async (
     files: FileList | File[],
-    category: "roles" | "appointments",
+    category: Category,
     folderName: string
   ) => {
     const fileArray = Array.from(files);
@@ -193,7 +210,7 @@ export default function UploadsPage() {
   };
 
   const handleDeleteFile = async (
-    category: "roles" | "appointments",
+    category: Category,
     folderName: string,
     fileName: string
   ) => {
@@ -220,7 +237,7 @@ export default function UploadsPage() {
   };
 
   const handleDeleteFolder = async (
-    category: "roles" | "appointments",
+    category: Category,
     folderName: string
   ) => {
     if (
@@ -252,7 +269,7 @@ export default function UploadsPage() {
   };
 
   const handleCreateFolder = async (
-    category: "roles" | "appointments",
+    category: Category,
     name: string
   ) => {
     const validation = validateFolderName(name);
@@ -278,9 +295,12 @@ export default function UploadsPage() {
         if (category === "roles") {
           setNewRoleName("");
           setShowNewRole(false);
-        } else {
+        } else if (category === "appointments") {
           setNewAppointmentName("");
           setShowNewAppointment(false);
+        } else {
+          setNewModelName("");
+          setShowNewModel(false);
         }
       } else {
         const data = await res.json();
@@ -551,6 +571,117 @@ export default function UploadsPage() {
                   </div>
                 </div>
               </section>
+
+              {/* ===== STANDARD MODELS ===== */}
+              <section>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30">
+                      <Layers className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">
+                        Standard Models
+                      </h2>
+                      <p className="text-xs text-gray-500">
+                        {standardModels.length} model
+                        {standardModels.length !== 1 ? "s" : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-52">
+                      <Input
+                        value={modelSearch}
+                        onChange={(e) => setModelSearch(e.target.value)}
+                        placeholder="Search models..."
+                        leftIcon={<Search className="h-4 w-4" />}
+                        className="!py-2 !text-sm"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowNewModel(true)}
+                      leftIcon={<Plus className="h-4 w-4" />}
+                    >
+                      New Model
+                    </Button>
+                  </div>
+                </div>
+
+                {showNewModel && (
+                  <div className="mb-4 flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50/50 p-4">
+                    <Input
+                      value={newModelName}
+                      onChange={(e) => setNewModelName(e.target.value)}
+                      placeholder="e.g. Quality Management"
+                      className="!py-2.5"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && newModelName.trim())
+                          handleCreateFolder("standard-models", newModelName);
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="sm"
+                      onClick={() =>
+                        handleCreateFolder("standard-models", newModelName)
+                      }
+                      disabled={!newModelName.trim()}
+                      className="!from-violet-500 !to-purple-600"
+                    >
+                      Create
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowNewModel(false);
+                        setNewModelName("");
+                      }}
+                      className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="max-h-[600px] overflow-y-auto custom-scrollbar pr-1">
+                  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                    {filteredModels.map((model) => (
+                      <TemplateIsland
+                        key={model.id}
+                        folder={model}
+                        category="standard-models"
+                        accentColor="violet"
+                        uploading={uploading === `standard-models-${model.id}`}
+                        deleting={deleting}
+                        onUpload={(files) =>
+                          handleFilesUpload(files, "standard-models", model.id)
+                        }
+                        onDeleteFile={(fileName) =>
+                          handleDeleteFile("standard-models", model.id, fileName)
+                        }
+                        onDeleteFolder={() =>
+                          handleDeleteFolder("standard-models", model.id)
+                        }
+                      />
+                    ))}
+                    {filteredModels.length === 0 && (
+                      <div className="col-span-full rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center">
+                        <Layers className="mx-auto h-10 w-10 text-gray-300" />
+                        <p className="mt-3 text-sm text-gray-400">
+                          {modelSearch
+                            ? "No models match your search."
+                            : 'No standard models yet. Click "New Model" to create one.'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
             </div>
           )}
         </div>
@@ -572,8 +703,8 @@ export default function UploadsPage() {
 // ========================================================
 interface TemplateIslandProps {
   folder: TemplateFolder;
-  category: "roles" | "appointments";
-  accentColor: "blue" | "emerald";
+  category: Category;
+  accentColor: "blue" | "emerald" | "violet";
   uploading: boolean;
   deleting: string | null;
   onUpload: (files: FileList | File[]) => void;
@@ -642,20 +773,30 @@ function TemplateIsland({
     }
   };
 
-  const c =
-    accentColor === "blue"
-      ? {
-          border: "border-blue-200",
-          borderDrag: "border-blue-400 bg-blue-50/60",
-          icon: "text-blue-500",
-          badge: "bg-blue-100 text-blue-700",
-        }
-      : {
-          border: "border-emerald-200",
-          borderDrag: "border-emerald-400 bg-emerald-50/60",
-          icon: "text-emerald-500",
-          badge: "bg-emerald-100 text-emerald-700",
-        };
+  const colorMap = {
+    blue: {
+      border: "border-blue-200",
+      borderDrag: "border-blue-400 bg-blue-50/60",
+      icon: "text-blue-500",
+      badge: "bg-blue-100 text-blue-700",
+      ring: "ring-blue-300",
+    },
+    emerald: {
+      border: "border-emerald-200",
+      borderDrag: "border-emerald-400 bg-emerald-50/60",
+      icon: "text-emerald-500",
+      badge: "bg-emerald-100 text-emerald-700",
+      ring: "ring-emerald-300",
+    },
+    violet: {
+      border: "border-violet-200",
+      borderDrag: "border-violet-400 bg-violet-50/60",
+      icon: "text-violet-500",
+      badge: "bg-violet-100 text-violet-700",
+      ring: "ring-violet-300",
+    },
+  };
+  const c = colorMap[accentColor];
 
   const isDeletingFolder = deleting === `${category}-${folder.id}`;
 
@@ -668,7 +809,7 @@ function TemplateIsland({
       className={cn(
         "relative rounded-2xl border-2 border-dashed bg-white shadow-lg shadow-gray-200/50 transition-all duration-200",
         isDragOver
-          ? `${c.borderDrag} scale-[1.02] shadow-xl ring-2 ring-offset-2 ${accentColor === "blue" ? "ring-blue-300" : "ring-emerald-300"}`
+          ? `${c.borderDrag} scale-[1.02] shadow-xl ring-2 ring-offset-2 ${c.ring}`
           : `${c.border} hover:shadow-xl`
       )}
     >

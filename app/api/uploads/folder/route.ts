@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   try {
     const { category, folderName } = await request.json();
 
-    if (!category || !["roles", "appointments"].includes(category)) {
+    if (!category || !["roles", "appointments", "standard-models"].includes(category)) {
       return NextResponse.json(
         { error: "Category must be 'roles' or 'appointments'" },
         { status: 400 }

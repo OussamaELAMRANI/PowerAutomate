@@ -272,7 +272,7 @@ export default function ModelCreatorPage() {
                       <p className="text-xs text-gray-500">
                         {includedCount === activeFolder.documents.length ? (
                           <span className="text-emerald-600 font-medium">
-                            ✓ All documents included
+                            All documents included
                           </span>
                         ) : includedCount === 0 ? (
                           <span className="text-red-500 font-medium">
