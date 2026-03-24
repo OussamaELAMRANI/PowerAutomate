@@ -55,16 +55,16 @@ export async function generateEmployeeDocs(
       };
 
       const templateData: TemplateData = {
-        fullName: employee.fullName,
-        birthday: formatDisplayDate(employee.birthday),
-        startDate: formatDisplayDate(employee.startDate),
-        trainingDuration: employee.trainingDuration,
-        roleName: role.name,
+        FullName: employee.fullName,
+        Birthday: formatDisplayDate(employee.birthday),
+        StartDate: formatDisplayDate(employee.startDate),
+        TrainingDuration: employee.trainingDuration,
+        RoleName: role.name,
         currentDate,
         // Global properties
-        companyName: globalProps.companyName || "",
-        companyEmail: globalProps.companyEmail || "",
-        companyAddress: globalProps.companyAddress || "",
+        CompanyName: globalProps.companyName || "",
+        CompanyEmail: globalProps.companyEmail || "",
+        CompanyAddress: globalProps.companyAddress || "",
       };
 
       // Process ONLY selected role documents
