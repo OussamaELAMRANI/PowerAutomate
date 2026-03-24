@@ -62,7 +62,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
             "disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500",
             hasError
               ? "border-red-300 focus:border-red-500 focus:ring-red-500/20"
-              : "border-gray-200 hover:border-gray-300"
+              : "border-gray-200 hover:border-gray-300",
           )}
         >
           {selectedOptions.length > 0 ? (
@@ -82,7 +82,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                         e.preventDefault();
                         removeOption(
                           e as unknown as React.MouseEvent,
-                          option.id
+                          option.id,
                         );
                       }
                     }}
@@ -116,6 +116,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
               const isSelected = value.includes(option.id);
               return (
                 <ListboxOption
+                  id={option.id}
                   key={option.id}
                   value={option.id}
                   disabled={option.disabled}
@@ -123,14 +124,14 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                   className={cn(
                     "relative cursor-pointer select-none py-3 pl-10 pr-4 transition-colors",
                     isSelected ? "bg-blue-50" : "hover:bg-gray-50",
-                    option.disabled && "cursor-not-allowed opacity-50"
+                    option.disabled && "cursor-not-allowed opacity-50",
                   )}
                 >
                   <div className="flex flex-col">
                     <span
                       className={cn(
                         "block truncate font-medium",
-                        isSelected ? "text-blue-700" : "text-gray-900"
+                        isSelected ? "text-blue-700" : "text-gray-900",
                       )}
                     >
                       {option.name}

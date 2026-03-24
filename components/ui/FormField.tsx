@@ -7,6 +7,7 @@ import { AlertCircle } from "lucide-react";
 export interface FormFieldProps {
   label: string;
   name: string;
+  id?: string;
   error?: string;
   required?: boolean;
   description?: string;
@@ -17,6 +18,7 @@ export interface FormFieldProps {
 export const FormField: React.FC<FormFieldProps> = ({
   label,
   name,
+  id,
   error,
   required,
   description,
@@ -26,7 +28,7 @@ export const FormField: React.FC<FormFieldProps> = ({
   return (
     <div className={cn("space-y-2", className)}>
       <label
-        htmlFor={name}
+        htmlFor={id}
         className="flex items-center gap-1 text-sm font-medium text-gray-700"
       >
         {label}

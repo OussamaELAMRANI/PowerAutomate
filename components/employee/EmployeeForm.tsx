@@ -79,20 +79,20 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
 
   // --- Document selection state (checked/unchecked) ---
   const [selectedRoleDocIds, setSelectedRoleDocIds] = useState<Set<string>>(
-    () => new Set(editingEmployee?.selectedRoleDocIds || [])
+    () => new Set(editingEmployee?.selectedRoleDocIds || []),
   );
   const [selectedAppDocIds, setSelectedAppDocIds] = useState<Set<string>>(
-    () => new Set(editingEmployee?.selectedAppointmentDocIds || [])
+    () => new Set(editingEmployee?.selectedAppointmentDocIds || []),
   );
 
   const selectedRole = useMemo(
     () => roles.find((r) => r.id === selectedRoleId),
-    [selectedRoleId, roles]
+    [selectedRoleId, roles],
   );
 
   const selectedAppointments = useMemo(
     () => appointments.filter((a) => selectedAppointmentIds?.includes(a.id)),
-    [selectedAppointmentIds, appointments]
+    [selectedAppointmentIds, appointments],
   );
 
   // Auto-select all docs when role changes
@@ -107,7 +107,7 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
   // Auto-select all docs when appointments change
   useEffect(() => {
     const allDocIds = selectedAppointments.flatMap((a) =>
-      a.documents.map((d) => d.id)
+      a.documents.map((d) => d.id),
     );
     setSelectedAppDocIds(new Set(allDocIds));
   }, [selectedAppointments]);
@@ -131,18 +131,28 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
   };
 
   const roleOptions = useMemo(
-    () => roles.map((r) => ({ id: r.id, name: r.name, description: r.description })),
-    [roles]
+    () =>
+      roles.map((r) => ({
+        id: r.id,
+        name: r.name,
+        description: r.description,
+      })),
+    [roles],
   );
 
   const appointmentOptions = useMemo(
-    () => appointments.map((a) => ({ id: a.id, name: a.name, description: a.description })),
-    [appointments]
+    () =>
+      appointments.map((a) => ({
+        id: a.id,
+        name: a.name,
+        description: a.description,
+      })),
+    [appointments],
   );
 
   const trainingOptions = useMemo(
     () => TRAINING_DURATIONS.map((t) => ({ id: t.id, name: t.name })),
-    []
+    [],
   );
 
   const handleFormSubmit = (data: EmployeeFormData) => {
@@ -185,7 +195,7 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
   const totalRoleDocs = selectedRole?.documents.length || 0;
   const totalOverlayDocs = selectedAppointments.reduce(
     (acc, a) => acc + a.documents.length,
-    0
+    0,
   );
 
   return (
@@ -219,11 +229,13 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
               <FormField
                 label="Full Name"
                 name="fullName"
+                id="fullName"
                 required
                 error={errors.fullName?.message}
               >
                 <Input
                   {...register("fullName")}
+                  id="fullName"
                   placeholder="e.g. Johnathan Doe"
                   leftIcon={<User className="h-5 w-5" />}
                   hasError={!!errors.fullName}
@@ -235,6 +247,7 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
                 <FormField
                   label="Role"
                   name="roleId"
+                  id="roleId"
                   required
                   error={errors.roleId?.message}
                 >
@@ -256,6 +269,7 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
                 <FormField
                   label="Birthday"
                   name="birthday"
+                  id="birthday"
                   required
                   error={errors.birthday?.message}
                 >
@@ -279,6 +293,7 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
                 <FormField
                   label="Training Duration"
                   name="trainingDuration"
+                  id="trainingDuration"
                   required
                   error={errors.trainingDuration?.message}
                 >
@@ -300,6 +315,7 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
                 <FormField
                   label="Start Date"
                   name="startDate"
+                  id="startDate"
                   required
                   error={errors.startDate?.message}
                 >
@@ -322,6 +338,7 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
               <FormField
                 label="Select Appointments"
                 name="appointmentIds"
+                id="appointmentIds"
                 error={errors.appointmentIds?.message}
               >
                 <Controller
@@ -391,7 +408,10 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
                             }`}
                           >
                             {isChecked && (
-                              <Check className="h-3 w-3 text-white" strokeWidth={3} />
+                              <Check
+                                className="h-3 w-3 text-white"
+                                strokeWidth={3}
+                              />
                             )}
                           </div>
                         </button>
@@ -463,12 +483,15 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
                               }`}
                             >
                               {isChecked && (
-                                <Check className="h-3 w-3 text-white" strokeWidth={3} />
+                                <Check
+                                  className="h-3 w-3 text-white"
+                                  strokeWidth={3}
+                                />
                               )}
                             </div>
                           </button>
                         );
-                      })
+                      }),
                     )}
                   </div>
                 ) : (

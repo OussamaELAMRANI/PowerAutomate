@@ -230,7 +230,7 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
               <div className="mt-3 space-y-1.5 max-h-44 overflow-y-auto custom-scrollbar">
                 {selectedFolderObjects.map((folder) => {
                   const includedCount = folder.documents.filter(
-                    (d) => !excludedDocIds?.has(d.id)
+                    (d) => !excludedDocIds?.has(d.id),
                   ).length;
                   const isActive = activeFolderId === folder.id;
                   return (
@@ -284,7 +284,7 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
             <FormField
               label="Company Logo"
               name="logo"
-              description="Optional — replaces {{Logo}} placeholder"
+              description="Optional — replaces {Logo} placeholder"
             >
               <FileDropzone
                 onFileSelect={setLogoFile}
@@ -307,10 +307,13 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
                 <FormField
                   label="Document Version"
                   name="docVersion"
+                  id="docVersion"
                   required
+                  description="{DocVersion} placeholder"
                   error={errors.docVersion?.message}
                 >
                   <Input
+                    id="docVersion"
                     {...register("docVersion")}
                     placeholder="e.g. v1.0"
                     leftIcon={<Hash className="h-4 w-4" />}
@@ -320,6 +323,7 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
                 <FormField
                   label="Document Date"
                   name="docDate"
+                  description="{DocDate} placeholder"
                   required
                   error={errors.docDate?.message}
                 >
@@ -341,11 +345,14 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
                 <FormField
                   label="Created By"
                   name="createdBy"
+                  id="createdBy"
+                  description="{CreatedBy} placeholder"
                   required
                   error={errors.createdBy?.message}
                 >
                   <Input
                     {...register("createdBy")}
+                    id="createdBy"
                     placeholder="Author name"
                     leftIcon={<User className="h-4 w-4" />}
                     hasError={!!errors.createdBy}
@@ -354,11 +361,14 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
                 <FormField
                   label="Approved By"
                   name="approvedBy"
+                  id="approvedBy"
+                  description="{ApprovedBy} placeholder"
                   required
                   error={errors.approvedBy?.message}
                 >
                   <Input
                     {...register("approvedBy")}
+                    id="approvedBy"
                     placeholder="Approver name"
                     leftIcon={<UserCheck className="h-4 w-4" />}
                     hasError={!!errors.approvedBy}
@@ -381,40 +391,67 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
               <FormField
                 label="Company Name"
                 name="companyName"
+                id="companyName"
+                description="{CompanyName} placeholder"
                 required
                 error={errors.companyName?.message}
               >
                 <Input
                   {...register("companyName")}
+                  id="companyName"
                   placeholder="Acme Corp"
                   leftIcon={<Building2 className="h-4 w-4" />}
                   hasError={!!errors.companyName}
                 />
               </FormField>
               <div className="grid gap-4 sm:grid-cols-2">
-                <FormField label="Street" name="companyStreet">
+                <FormField
+                  description="{companyStreet} placeholder"
+                  label="Street"
+                  name="companyStreet"
+                  id="companyStreet"
+                >
                   <Input
                     {...register("companyStreet")}
+                    id="companyStreet"
                     placeholder="123 Main Street"
                     leftIcon={<MapPin className="h-4 w-4" />}
                   />
                 </FormField>
-                <FormField label="ZIP Code" name="companyZip">
+                <FormField
+                  description="{CompanyZip} placeholder"
+                  label="ZIP Code"
+                  name="companyZip"
+                  id="companyZip"
+                >
                   <Input
+                    id="companyZip"
                     {...register("companyZip")}
                     placeholder="12345"
                   />
                 </FormField>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <FormField label="City" name="companyCity">
+                <FormField
+                  description="{CompanyCity} placeholder"
+                  label="City"
+                  name="companyCity"
+                  id="companyCity"
+                >
                   <Input
+                    id="companyCity"
                     {...register("companyCity")}
                     placeholder="Berlin"
                   />
                 </FormField>
-                <FormField label="Country" name="companyCountry">
+                <FormField
+                  description="{CompanyCountry} placeholder"
+                  label="Country"
+                  name="companyCountry"
+                  id="companyCountry"
+                >
                   <Input
+                    id="companyCountry"
                     {...register("companyCountry")}
                     placeholder="Germany"
                     leftIcon={<Globe className="h-4 w-4" />}
@@ -424,9 +461,11 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
               <FormField
                 label="Full Address Line"
                 name="companyAddressLine"
+                id="companyAddressLine"
                 description="Combined address (auto-fills {{CompanyAddressLine}})"
               >
                 <Input
+                  id="companyAddressLine"
                   {...register("companyAddressLine")}
                   placeholder="123 Main St, 12345 Berlin, Germany"
                 />
