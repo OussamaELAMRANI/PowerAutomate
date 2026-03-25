@@ -58,8 +58,11 @@ export async function generateEmployeeDocs(
         FullName: employee.fullName,
         Birthday: formatDisplayDate(employee.birthday),
         StartDate: formatDisplayDate(employee.startDate),
-        TrainingDuration: employee.trainingDuration,
         RoleName: role.name,
+        RoleType: employee.roleType || "",
+        TrainingHours: employee.trainingHours || "",
+        GuardIDNumber: employee.guardIDNumber || "",
+        EmployeeIDNumber: employee.employeeIDNumber || "",
         currentDate,
         // Global properties
         CompanyName: globalProps.companyName || "",

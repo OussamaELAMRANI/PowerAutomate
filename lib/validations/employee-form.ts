@@ -11,14 +11,17 @@ export const employeeFormSchema = z.object({
   startDate: z
     .string()
     .min(1, "Please select a start date"),
-  trainingDuration: z
-    .string()
-    .min(1, "Please select a training duration"),
   roleId: z
     .string()
     .min(1, "Please select a role"),
   appointmentIds: z
     .array(z.string()),
+  // New optional fields
+  roleType: z.string().optional(),
+  trainingHours: z.string().optional(),
+  guardIDNumber: z.string().optional(),
+  employeeIDNumber: z.string().optional(),
+  useGuardAsEmployeeId: z.boolean().optional(),
 });
 
 export type EmployeeFormData = z.infer<typeof employeeFormSchema>;

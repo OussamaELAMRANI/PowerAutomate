@@ -7,7 +7,6 @@ import {
   employeeFormSchema,
   EmployeeFormData,
 } from "@/lib/validations/employee-form";
-import { TRAINING_DURATIONS } from "@/lib/data/employee-config";
 import {
   Button,
   Card,
@@ -25,6 +24,11 @@ import {
   FolderOpen,
   FileText,
   Check,
+  Briefcase,
+  Calendar,
+  Clock,
+  Shield,
+  Hash,
 } from "lucide-react";
 import type { Employee, Role, Appointment } from "@/lib/types/employee";
 
@@ -51,6 +55,7 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
     watch,
     control,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeFormSchema),
@@ -60,24 +65,41 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
           fullName: editingEmployee.fullName,
           birthday: editingEmployee.birthday,
           startDate: editingEmployee.startDate,
-          trainingDuration: editingEmployee.trainingDuration,
           roleId: editingEmployee.roleId,
           appointmentIds: editingEmployee.appointmentIds,
+          roleType: editingEmployee.roleType || "",
+          trainingHours: editingEmployee.trainingHours || "",
+          guardIDNumber: editingEmployee.guardIDNumber || "",
+          employeeIDNumber: editingEmployee.employeeIDNumber || "",
+          useGuardAsEmployeeId: editingEmployee.useGuardAsEmployeeId || false,
         }
       : {
           fullName: "",
           birthday: "",
           startDate: "",
-          trainingDuration: "",
           roleId: "",
           appointmentIds: [],
+          roleType: "",
+          trainingHours: "",
+          guardIDNumber: "",
+          employeeIDNumber: "",
+          useGuardAsEmployeeId: false,
         },
   });
 
   const selectedRoleId = watch("roleId");
   const selectedAppointmentIds = watch("appointmentIds");
+  const useGuardAsEmployeeId = watch("useGuardAsEmployeeId");
+  const guardIDNumber = watch("guardIDNumber");
 
-  // --- Document selection state (checked/unchecked) ---
+  // Sync Guard ID → Employee ID when checkbox is checked
+  useEffect(() => {
+    if (useGuardAsEmployeeId) {
+      setValue("employeeIDNumber", guardIDNumber || "");
+    }
+  }, [useGuardAsEmployeeId, guardIDNumber, setValue]);
+
+  // --- Document selection state ---
   const [selectedRoleDocIds, setSelectedRoleDocIds] = useState<Set<string>>(
     () => new Set(editingEmployee?.selectedRoleDocIds || []),
   );
@@ -95,7 +117,6 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
     [selectedAppointmentIds, appointments],
   );
 
-  // Auto-select all docs when role changes
   useEffect(() => {
     if (selectedRole) {
       setSelectedRoleDocIds(new Set(selectedRole.documents.map((d) => d.id)));
@@ -104,7 +125,6 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
     }
   }, [selectedRole]);
 
-  // Auto-select all docs when appointments change
   useEffect(() => {
     const allDocIds = selectedAppointments.flatMap((a) =>
       a.documents.map((d) => d.id),
@@ -150,22 +170,26 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
     [appointments],
   );
 
-  const trainingOptions = useMemo(
-    () => TRAINING_DURATIONS.map((t) => ({ id: t.id, name: t.name })),
-    [],
-  );
-
   const handleFormSubmit = (data: EmployeeFormData) => {
+    // Determine effective Employee ID
+    const effectiveEmployeeId = data.useGuardAsEmployeeId
+      ? data.guardIDNumber || ""
+      : data.employeeIDNumber || "";
+
     const employee: Employee = {
       id: editingEmployee?.id || crypto.randomUUID(),
       fullName: data.fullName,
       birthday: data.birthday,
       startDate: data.startDate,
-      trainingDuration: data.trainingDuration,
       roleId: data.roleId,
       appointmentIds: data.appointmentIds,
       selectedRoleDocIds: Array.from(selectedRoleDocIds),
       selectedAppointmentDocIds: Array.from(selectedAppDocIds),
+      roleType: data.roleType,
+      trainingHours: data.trainingHours,
+      guardIDNumber: data.guardIDNumber,
+      employeeIDNumber: effectiveEmployeeId,
+      useGuardAsEmployeeId: data.useGuardAsEmployeeId,
     };
 
     if (editingEmployee) {
@@ -173,7 +197,6 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
     } else {
       onAdd(employee);
     }
-    // Form state persists — do NOT reset after adding
   };
 
   const handleReset = () => {
@@ -181,9 +204,13 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
       fullName: "",
       birthday: "",
       startDate: "",
-      trainingDuration: "",
       roleId: "",
       appointmentIds: [],
+      roleType: "",
+      trainingHours: "",
+      guardIDNumber: "",
+      employeeIDNumber: "",
+      useGuardAsEmployeeId: false,
     });
     setSelectedRoleDocIds(new Set());
     setSelectedAppDocIds(new Set());
@@ -223,142 +250,252 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         <CardContent className="p-6 pt-4">
           <div className="grid gap-6 lg:grid-cols-[1fr_320px] xl:grid-cols-[1fr_360px]">
-            {/* Left: Form Fields */}
-            <div className="space-y-5">
-              {/* Full Name */}
-              <FormField
-                label="Full Name"
-                name="fullName"
-                id="fullName"
-                required
-                error={errors.fullName?.message}
-              >
-                <Input
-                  {...register("fullName")}
-                  id="fullName"
-                  placeholder="e.g. Johnathan Doe"
-                  leftIcon={<User className="h-5 w-5" />}
-                  hasError={!!errors.fullName}
-                />
-              </FormField>
-
-              {/* Role & Birthday Row */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField
-                  label="Role"
-                  name="roleId"
-                  id="roleId"
-                  required
-                  error={errors.roleId?.message}
-                >
-                  <Controller
-                    name="roleId"
-                    control={control}
-                    render={({ field }) => (
-                      <Select
-                        options={roleOptions}
-                        value={field.value}
-                        onChange={field.onChange}
-                        placeholder="Select role"
-                        hasError={!!errors.roleId}
-                      />
-                    )}
-                  />
-                </FormField>
-
-                <FormField
-                  label="Birthday"
-                  name="birthday"
-                  id="birthday"
-                  required
-                  error={errors.birthday?.message}
-                >
-                  <Controller
-                    name="birthday"
-                    control={control}
-                    render={({ field }) => (
-                      <DatePicker
-                        value={field.value}
-                        onChange={field.onChange}
-                        placeholder="Select birthday"
-                        hasError={!!errors.birthday}
-                      />
-                    )}
-                  />
-                </FormField>
-              </div>
-
-              {/* Training & Start Date Row */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField
-                  label="Training Duration"
-                  name="trainingDuration"
-                  id="trainingDuration"
-                  required
-                  error={errors.trainingDuration?.message}
-                >
-                  <Controller
-                    name="trainingDuration"
-                    control={control}
-                    render={({ field }) => (
-                      <Select
-                        options={trainingOptions}
-                        value={field.value}
-                        onChange={field.onChange}
-                        placeholder="Select duration"
-                        hasError={!!errors.trainingDuration}
-                      />
-                    )}
-                  />
-                </FormField>
-
-                <FormField
-                  label="Start Date"
-                  name="startDate"
-                  id="startDate"
-                  required
-                  error={errors.startDate?.message}
-                >
-                  <Controller
-                    name="startDate"
-                    control={control}
-                    render={({ field }) => (
-                      <DatePicker
-                        value={field.value}
-                        onChange={field.onChange}
-                        placeholder="Select start date"
-                        hasError={!!errors.startDate}
-                      />
-                    )}
-                  />
-                </FormField>
-              </div>
-
-              {/* Appointments */}
-              <FormField
-                label="Select Appointments"
-                name="appointmentIds"
-                id="appointmentIds"
-                error={errors.appointmentIds?.message}
-              >
-                <Controller
-                  name="appointmentIds"
-                  control={control}
-                  render={({ field }) => (
-                    <MultiSelect
-                      options={appointmentOptions}
-                      value={field.value || []}
-                      onChange={field.onChange}
-                      placeholder="Select appointment type"
-                      hasError={!!errors.appointmentIds}
+            {/* Left: Form Fields — grouped sections */}
+            <div className="space-y-6">
+              {/* ═══ Personal Info ═══ */}
+              <fieldset className="rounded-xl border border-gray-200 p-5 bg-white/60">
+                <legend className="flex items-center gap-2 px-2 text-sm font-bold text-gray-700 uppercase tracking-wider">
+                  <User className="h-4 w-4 text-blue-500" />
+                  Personal Information
+                </legend>
+                <div className="space-y-4 mt-2">
+                  <FormField
+                    label="Full Name"
+                    name="fullName"
+                    id="fullName"
+                    required
+                    description="{FullName} placeholder"
+                    error={errors.fullName?.message}
+                  >
+                    <Input
+                      {...register("fullName")}
+                      id="fullName"
+                      placeholder="e.g. Johnathan Doe"
+                      leftIcon={<User className="h-5 w-5" />}
+                      hasError={!!errors.fullName}
                     />
-                  )}
-                />
-              </FormField>
+                  </FormField>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FormField
+                      label="Birthday"
+                      name="birthday"
+                      id="birthday"
+                      description="{Birthday} placeholder"
+                      required
+                      error={errors.birthday?.message}
+                    >
+                      <Controller
+                        name="birthday"
+                        control={control}
+                        render={({ field }) => (
+                          <DatePicker
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Select birthday"
+                            hasError={!!errors.birthday}
+                          />
+                        )}
+                      />
+                    </FormField>
+                    <FormField
+                      label="Start Date"
+                      name="startDate"
+                      id="startDate"
+                      description="{StartDate} placeholder"
+                      required
+                      error={errors.startDate?.message}
+                    >
+                      <Controller
+                        name="startDate"
+                        control={control}
+                        render={({ field }) => (
+                          <DatePicker
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Select start date"
+                            hasError={!!errors.startDate}
+                          />
+                        )}
+                      />
+                    </FormField>
+                  </div>
+                </div>
+              </fieldset>
+
+              {/* ═══ Role & Training ═══ */}
+              <fieldset className="rounded-xl border border-gray-200 p-5 bg-white/60">
+                <legend className="flex items-center gap-2 px-2 text-sm font-bold text-gray-700 uppercase tracking-wider">
+                  <Briefcase className="h-4 w-4 text-indigo-500" />
+                  Role &amp; Training
+                </legend>
+                <div className="space-y-4 mt-2">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FormField
+                      label="Role"
+                      name="roleId"
+                      id="roleId"
+                      description="{RoleName} placeholder"
+                      required
+                      error={errors.roleId?.message}
+                    >
+                      <Controller
+                        name="roleId"
+                        control={control}
+                        render={({ field }) => (
+                          <Select
+                            options={roleOptions}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Select role"
+                            hasError={!!errors.roleId}
+                          />
+                        )}
+                      />
+                    </FormField>
+                    <FormField
+                      description="{RoleType} placeholder"
+                      label="Role Type"
+                      name="roleType"
+                      id="roleType"
+                    >
+                      <Input
+                        {...register("roleType")}
+                        id="roleType"
+                        placeholder="e.g. Senior, Junior"
+                        leftIcon={<Briefcase className="h-4 w-4" />}
+                      />
+                    </FormField>
+                  </div>
+                  <FormField
+                    label="Training Hours"
+                    name="trainingHours"
+                    id="trainingHours"
+                    description="{TrainingHours} placeholder"
+                  >
+                    <Input
+                      {...register("trainingHours")}
+                      id="trainingHours"
+                      placeholder="e.g. 40"
+                      leftIcon={<Clock className="h-4 w-4" />}
+                    />
+                  </FormField>
+                </div>
+              </fieldset>
+
+              {/* ═══ Identification ═══ */}
+              <fieldset className="rounded-xl border border-gray-200 p-5 bg-white/60">
+                <legend className="flex items-center gap-2 px-2 text-sm font-bold text-gray-700 uppercase tracking-wider">
+                  <Shield className="h-4 w-4 text-emerald-500" />
+                  Identification
+                </legend>
+                <div className="space-y-4 mt-2">
+                  <FormField
+                    label="Guard ID Number"
+                    name="guardIDNumber"
+                    id="guardIDNumber"
+                    description="{GuardIDNumber} placeholder"
+                  >
+                    <Input
+                      {...register("guardIDNumber")}
+                      id="guardIDNumber"
+                      placeholder="e.g. GRD-001234"
+                      leftIcon={<Shield className="h-4 w-4" />}
+                    />
+                  </FormField>
+
+                  {/* Checkbox: Use Guard ID as Employee ID */}
+                  <label className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors select-none">
+                    <Controller
+                      name="useGuardAsEmployeeId"
+                      control={control}
+                      render={({ field }) => (
+                        <button
+                          type="button"
+                          role="checkbox"
+                          aria-checked={field.value}
+                          onClick={() => field.onChange(!field.value)}
+                          className={`flex h-5 w-5 items-center justify-center rounded border-2 shrink-0 transition-colors cursor-pointer ${
+                            field.value
+                              ? "border-emerald-500 bg-emerald-500"
+                              : "border-gray-300 bg-white hover:border-gray-400"
+                          }`}
+                        >
+                          {field.value && (
+                            <Check
+                              className="h-3 w-3 text-white"
+                              strokeWidth={3}
+                            />
+                          )}
+                        </button>
+                      )}
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-gray-700">
+                        Use Guard ID as Employee ID
+                      </span>
+                      <p className="text-xs text-gray-400">
+                        The Guard ID Number will be used as the Employee ID
+                      </p>
+                    </div>
+                  </label>
+
+                  <FormField
+                    label="Employee ID Number"
+                    name="employeeIDNumber"
+                    id="employeeIDNumber"
+                    description="{EmployeeIDNumber} placeholder"
+                  >
+                    <Input
+                      {...register("employeeIDNumber")}
+                      id="employeeIDNumber"
+                      placeholder={
+                        useGuardAsEmployeeId
+                          ? "← Using Guard ID"
+                          : "e.g. EMP-005678"
+                      }
+                      leftIcon={<Hash className="h-4 w-4" />}
+                      disabled={useGuardAsEmployeeId}
+                      className={
+                        useGuardAsEmployeeId ? "opacity-60 !bg-gray-100" : ""
+                      }
+                    />
+                  </FormField>
+                </div>
+              </fieldset>
+
+              {/* ═══ Appointments ═══ */}
+              <fieldset className="rounded-xl border border-gray-200 p-5 bg-white/60">
+                <legend className="flex items-center gap-2 px-2 text-sm font-bold text-gray-700 uppercase tracking-wider">
+                  <Calendar className="h-4 w-4 text-orange-500" />
+                  Appointments / Overlays
+                </legend>
+                <div className="mt-2">
+                  <FormField
+                    label="Select Appointments"
+                    name="appointmentIds"
+                    id="appointmentIds"
+                    error={errors.appointmentIds?.message}
+                  >
+                    <Controller
+                      name="appointmentIds"
+                      control={control}
+                      render={({ field }) => (
+                        <MultiSelect
+                          options={appointmentOptions}
+                          value={field.value || []}
+                          onChange={field.onChange}
+                          placeholder="Select appointment type"
+                          hasError={!!errors.appointmentIds}
+                        />
+                      )}
+                    />
+                  </FormField>
+                </div>
+              </fieldset>
             </div>
 
-            {/* Right: Document Checklists — scrollable with filters */}
-            <div className="space-y-6 max-h-[480px] overflow-y-auto pr-1 custom-scrollbar">
+            {/* Right: Document Checklists — stretches with form */}
+            <div className="space-y-6 overflow-y-auto pr-1 custom-scrollbar lg:max-h-[calc(100vh-10rem)] lg:sticky lg:top-24 lg:self-start">
               {/* Core Documents (Role) */}
               <div>
                 <div className="flex items-center justify-between mb-3">

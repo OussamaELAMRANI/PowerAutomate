@@ -1,4 +1,4 @@
-import type { Role, Appointment, TrainingDurationOption } from "@/lib/types/employee";
+import type { Role, Appointment } from "@/lib/types/employee";
 
 export const ROLES: Role[] = [
   {
@@ -249,13 +249,4 @@ export const APPOINTMENTS: Appointment[] = [
       },
     ],
   },
-];
-
-export const TRAINING_DURATIONS: TrainingDurationOption[] = [
-  { id: "1-week", name: "1 Week" },
-  { id: "2-weeks", name: "2 Weeks" },
-  { id: "1-month", name: "1 Month" },
-  { id: "2-months", name: "2 Months" },
-  { id: "3-months", name: "3 Months" },
-  { id: "6-months", name: "6 Months" },
 ];

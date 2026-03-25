@@ -29,24 +29,25 @@ export interface Employee {
   fullName: string;
   birthday: string;
   startDate: string;
-  trainingDuration: string;
   roleId: string;
   appointmentIds: string[];
   /** IDs of role docs to include (filtered by user) */
   selectedRoleDocIds: string[];
   /** IDs of appointment docs to include (filtered by user) */
   selectedAppointmentDocIds: string[];
+  // New fields
+  roleType?: string;
+  trainingHours?: string;
+  guardIDNumber?: string;
+  employeeIDNumber?: string;
+  /** When true, GuardIDNumber is used as the Employee ID */
+  useGuardAsEmployeeId?: boolean;
 }
 
 export interface GlobalProperties {
   companyName: string;
   companyEmail: string;
   companyAddress: string;
-}
-
-export interface TrainingDurationOption {
-  id: string;
-  name: string;
 }
 
 export interface ScannedTemplates {
