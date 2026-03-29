@@ -1,10 +1,9 @@
 "use server";
 
 import { TemplateData, TemplateHandler } from "easy-template-x";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import JSZip from "jszip";
 import type { Employee, GlobalProperties, Role, Appointment } from "@/lib/types/employee";
+import { listTemplateFiles, fetchTemplateBuffer, parseCustomId, utapi } from "@/lib/uploadthing";
 
 export interface GenerateEmployeeDocsState {
   success: boolean;
@@ -22,6 +21,35 @@ export async function generateEmployeeDocs(
   try {
     if (!employees || employees.length === 0) {
       return { success: false, error: "No employees provided" };
+    }
+
+    // Build URL map for all template files up front (one API round-trip)
+    const allFiles = await listTemplateFiles();
+    const templateFiles = allFiles.filter(
+      (f) =>
+        f.customId?.startsWith("roles/") ||
+        f.customId?.startsWith("appointments/")
+    );
+    const keys = templateFiles.map((f) => f.key);
+
+    let urlMap = new Map<string, string>(); // key → url
+    if (keys.length > 0) {
+      const { data } = await utapi.getFileUrls(keys);
+      data.forEach(({ key, url }) => urlMap.set(key, url));
+    }
+
+    // logical path ("category/folder/file") → url
+    // customIds are 4-segment ("…/timestamp"), so key by the parsed 3-segment path.
+    const templateUrlMap = new Map<string, string>();
+    for (const f of templateFiles) {
+      const parsed = parseCustomId(f.customId);
+      const url = urlMap.get(f.key);
+      if (parsed && url) {
+        templateUrlMap.set(
+          `${parsed.category}/${parsed.folderName}/${parsed.fileName}`,
+          url
+        );
+      }
     }
 
     const zip = new JSZip();
@@ -64,39 +92,32 @@ export async function generateEmployeeDocs(
         GuardIDNumber: employee.guardIDNumber || "",
         EmployeeIDNumber: employee.employeeIDNumber || "",
         currentDate,
-        // Global properties
         CompanyName: globalProps.companyName || "",
         CompanyEmail: globalProps.companyEmail || "",
         CompanyAddress: globalProps.companyAddress || "",
       };
 
-      // Process ONLY selected role documents
+      // Process selected role documents
       const roleFolder = employeeFolder.folder(role.name);
       if (roleFolder) {
         const selectedRoleDocs = role.documents.filter((doc) =>
           employee.selectedRoleDocIds.includes(doc.id)
         );
         for (const doc of selectedRoleDocs) {
-          const templatePath = path.join(
-            process.cwd(),
-            "templates",
-            "roles",
-            role.id,
-            doc.fileName
-          );
-
+          const customId = `roles/${role.id}/${doc.fileName}`;
+          const url = templateUrlMap.get(customId);
+          if (!url) {
+            return {
+              success: false,
+              error: `Template not found: ${customId}`,
+            };
+          }
           try {
-            const templateBuffer = await readFile(templatePath);
-            const processedDoc = await handler.process(
-              templateBuffer,
-              templateData
-            );
+            const templateBuffer = await fetchTemplateBuffer(url);
+            const processedDoc = await handler.process(templateBuffer, templateData);
             roleFolder.file(doc.fileName, processedDoc);
           } catch (err) {
-            console.error(
-              `Error processing role template ${doc.fileName}:`,
-              err
-            );
+            console.error(`Error processing role template ${doc.fileName}:`, err);
             return {
               success: false,
               error: `Failed to process template "${doc.fileName}" for role "${role.name}"`,
@@ -105,7 +126,7 @@ export async function generateEmployeeDocs(
         }
       }
 
-      // Process ONLY selected appointment documents
+      // Process selected appointment documents
       for (const appointmentId of employee.appointmentIds) {
         const appointment = appointments.find((a) => a.id === appointmentId);
         if (!appointment) continue;
@@ -117,26 +138,20 @@ export async function generateEmployeeDocs(
           employee.selectedAppointmentDocIds.includes(doc.id)
         );
         for (const doc of selectedAppDocs) {
-          const templatePath = path.join(
-            process.cwd(),
-            "templates",
-            "appointments",
-            appointment.id,
-            doc.fileName
-          );
-
+          const customId = `appointments/${appointment.id}/${doc.fileName}`;
+          const url = templateUrlMap.get(customId);
+          if (!url) {
+            return {
+              success: false,
+              error: `Template not found: ${customId}`,
+            };
+          }
           try {
-            const templateBuffer = await readFile(templatePath);
-            const processedDoc = await handler.process(
-              templateBuffer,
-              templateData
-            );
+            const templateBuffer = await fetchTemplateBuffer(url);
+            const processedDoc = await handler.process(templateBuffer, templateData);
             appointmentFolder.file(doc.fileName, processedDoc);
           } catch (err) {
-            console.error(
-              `Error processing appointment template ${doc.fileName}:`,
-              err
-            );
+            console.error(`Error processing appointment template ${doc.fileName}:`, err);
             return {
               success: false,
               error: `Failed to process template "${doc.fileName}" for appointment "${appointment.name}"`,
@@ -149,11 +164,7 @@ export async function generateEmployeeDocs(
     const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
     const zipBase64 = zipBuffer.toString("base64");
 
-    return {
-      success: true,
-      zipBase64,
-      timestamp: Date.now(),
-    };
+    return { success: true, zipBase64, timestamp: Date.now() };
   } catch (error) {
     console.error("Error generating employee docs:", error);
     return {

@@ -1,49 +1,47 @@
 import { NextResponse } from "next/server";
-import fs from "node:fs";
-import path from "node:path";
+import { listTemplateFiles, parseCustomId } from "@/lib/uploadthing";
 
-/**
- * GET /api/standard-models
- * Scans templates/standard-models/ to discover all model folders and their sub-documents.
- */
 export async function GET() {
   try {
-    const modelsDir = path.join(process.cwd(), "templates", "standard-models");
+    const files = await listTemplateFiles();
 
-    if (!fs.existsSync(modelsDir)) {
-      return NextResponse.json({ folders: [] });
-    }
+    const folderMap = new Map<
+      string,
+      { id: string; name: string; documents: { id: string; name: string; fileName: string }[] }
+    >();
 
-    const entries = fs.readdirSync(modelsDir, { withFileTypes: true });
-    const folders: {
-      id: string;
-      name: string;
-      documents: { id: string; name: string; fileName: string }[];
-    }[] = [];
+    for (const file of files) {
+      const parsed = parseCustomId(file.customId);
+      if (!parsed) continue;
+      if (parsed.category !== "standard-models") continue;
 
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      const folderPath = path.join(modelsDir, entry.name);
-      const files = fs
-        .readdirSync(folderPath)
-        .filter((f) => f.endsWith(".docx"));
-      const documents = files.map((fileName) => ({
-        id: `${entry.name}-${fileName.replace(".docx", "")}`,
-        name: formatName(fileName.replace(".docx", "")),
-        fileName,
-      }));
-      folders.push({
-        id: entry.name,
-        name: formatName(entry.name),
-        documents,
+      if (!folderMap.has(parsed.folderName)) {
+        folderMap.set(parsed.folderName, {
+          id: parsed.folderName,
+          name: formatName(parsed.folderName),
+          documents: [],
+        });
+      }
+
+      if (parsed.fileName === ".folder") continue;
+      if (!parsed.fileName.endsWith(".docx")) continue;
+
+      folderMap.get(parsed.folderName)!.documents.push({
+        id: `${parsed.folderName}-${parsed.fileName.replace(".docx", "")}`,
+        name: formatName(parsed.fileName.replace(".docx", "")),
+        fileName: parsed.fileName,
       });
     }
 
+    const folders = Array.from(folderMap.values()).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+
     return NextResponse.json({ folders });
   } catch (error) {
-    console.error("Error scanning standard models:", error);
+    console.error("Error listing standard models:", error);
     return NextResponse.json(
-      { error: "Failed to scan standard models" },
+      { error: "Failed to list standard models" },
       { status: 500 }
     );
   }

@@ -1,18 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "node:fs";
-import path from "node:path";
 import { validateFileName, validateFolderName } from "@/lib/sanitize";
+import {
+  utapi,
+  buildPathPrefix,
+  listTemplateFiles,
+  uploadTemplateFile,
+  buildCustomId,
+  VALID_CATEGORIES,
+} from "@/lib/uploadthing";
 
-const TEMPLATES_DIR = path.join(process.cwd(), "templates");
-
-/**
- * POST /api/uploads
- * Uploads .docx files to a role or appointment folder.
- * Expects multipart/form-data with:
- *   - category: "roles" | "appointments"
- *   - folderName: the role/appointment name
- *   - files: one or more .docx files
- */
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -20,15 +16,10 @@ export async function POST(request: NextRequest) {
     const folderName = formData.get("folderName") as string;
     const files = formData.getAll("files") as File[];
 
-    // Validate category
-    if (!category || !["roles", "appointments", "standard-models"].includes(category)) {
-      return NextResponse.json(
-        { error: "Category must be 'roles' or 'appointments'" },
-        { status: 400 }
-      );
+    if (!category || !VALID_CATEGORIES.includes(category as never)) {
+      return NextResponse.json({ error: "Invalid category" }, { status: 400 });
     }
 
-    // Validate folder name
     const folderValidation = validateFolderName(folderName);
     if (!folderValidation.valid) {
       return NextResponse.json(
@@ -37,64 +28,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate files
     if (!files || files.length === 0) {
-      return NextResponse.json(
-        { error: "No files provided" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "No files provided" }, { status: 400 });
     }
 
     const safeFolderName = folderValidation.sanitized!;
-    const targetDir = path.join(TEMPLATES_DIR, category, safeFolderName);
+    const results: { name: string; status: "ok" | "error"; error?: string }[] =
+      [];
 
-    // Verify the resolved path is still inside templates dir (belt-and-suspenders)
-    const resolvedTarget = path.resolve(targetDir);
-    if (!resolvedTarget.startsWith(path.resolve(TEMPLATES_DIR))) {
-      return NextResponse.json(
-        { error: "Invalid path detected" },
-        { status: 400 }
-      );
-    }
-
-    // Create directory if needed
-    fs.mkdirSync(targetDir, { recursive: true });
-
-    const results: { name: string; status: "ok" | "error"; error?: string }[] = [];
+    // Fetch existing files once to check for overwrites
+    const existingFiles = await listTemplateFiles();
 
     for (const file of files) {
-      // Validate filename
       const nameValidation = validateFileName(file.name);
       if (!nameValidation.valid) {
-        results.push({
-          name: file.name,
-          status: "error",
-          error: nameValidation.error,
-        });
+        results.push({ name: file.name, status: "error", error: nameValidation.error });
         continue;
       }
 
-      // Validate size (10MB max)
       if (file.size > 10 * 1024 * 1024) {
-        results.push({
-          name: file.name,
-          status: "error",
-          error: "File exceeds 10MB limit",
-        });
+        results.push({ name: file.name, status: "error", error: "File exceeds 10MB limit" });
         continue;
       }
 
       if (file.size === 0) {
-        results.push({
-          name: file.name,
-          status: "error",
-          error: "File is empty",
-        });
+        results.push({ name: file.name, status: "error", error: "File is empty" });
         continue;
       }
 
-      // Validate DOCX magic bytes
       const buffer = await file.arrayBuffer();
+
+      // Validate DOCX magic bytes (PK zip signature)
       const bytes = new Uint8Array(buffer.slice(0, 4));
       if (
         bytes[0] !== 0x50 ||
@@ -102,31 +66,34 @@ export async function POST(request: NextRequest) {
         bytes[2] !== 0x03 ||
         bytes[3] !== 0x04
       ) {
-        results.push({
-          name: file.name,
-          status: "error",
-          error: "Not a valid .docx file",
-        });
+        results.push({ name: file.name, status: "error", error: "Not a valid .docx file" });
         continue;
       }
 
       const safeFileName = nameValidation.sanitized!;
-      const filePath = path.join(targetDir, safeFileName);
 
-      // Final path check
-      const resolvedFile = path.resolve(filePath);
-      if (!resolvedFile.startsWith(path.resolve(TEMPLATES_DIR))) {
-        results.push({
-          name: file.name,
-          status: "error",
-          error: "Invalid path detected",
-        });
-        continue;
+      // Delete any "Uploaded" versions of this logical path before re-uploading.
+      // We match by prefix (category/folder/filename/) so "Deletion Pending"
+      // files are ignored — they already have a stale customId and won't
+      // conflict with the fresh timestamped customId we're about to create.
+      const prefix = buildPathPrefix(category, safeFolderName, safeFileName);
+      const stale = existingFiles.filter((f) => f.customId?.startsWith(prefix));
+      if (stale.length > 0) {
+        await utapi.deleteFiles(stale.map((f) => f.key));
       }
 
-      // Write file
-      fs.writeFileSync(filePath, Buffer.from(buffer));
-      results.push({ name: safeFileName, status: "ok" });
+      const customId = buildCustomId(category, safeFolderName, safeFileName);
+
+      try {
+        await uploadTemplateFile(buffer, safeFileName, customId);
+        results.push({ name: safeFileName, status: "ok" });
+      } catch (err) {
+        results.push({
+          name: safeFileName,
+          status: "error",
+          error: err instanceof Error ? err.message : "Upload failed",
+        });
+      }
     }
 
     const successCount = results.filter((r) => r.status === "ok").length;
@@ -143,21 +110,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * DELETE /api/uploads
- * Deletes a specific file or an entire folder.
- * Body: { category, folderName, fileName? }
- */
 export async function DELETE(request: NextRequest) {
   try {
     const body = await request.json();
     const { category, folderName, fileName } = body;
 
-    if (!category || !["roles", "appointments", "standard-models"].includes(category)) {
-      return NextResponse.json(
-        { error: "Invalid category" },
-        { status: 400 }
-      );
+    if (!category || !VALID_CATEGORIES.includes(category)) {
+      return NextResponse.json({ error: "Invalid category" }, { status: 400 });
     }
 
     const folderValidation = validateFolderName(folderName);
@@ -170,8 +129,10 @@ export async function DELETE(request: NextRequest) {
 
     const safeFolderName = folderValidation.sanitized!;
 
+    const allFiles = await listTemplateFiles();
+
     if (fileName) {
-      // Delete a specific file
+      // Delete a specific file — match all versions by logical path prefix
       const fileValidation = validateFileName(fileName);
       if (!fileValidation.valid) {
         return NextResponse.json(
@@ -179,36 +140,24 @@ export async function DELETE(request: NextRequest) {
           { status: 400 }
         );
       }
-      const filePath = path.join(
-        TEMPLATES_DIR,
-        category,
-        safeFolderName,
-        fileValidation.sanitized!
-      );
-
-      const resolved = path.resolve(filePath);
-      if (!resolved.startsWith(path.resolve(TEMPLATES_DIR))) {
-        return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+      const prefix = buildPathPrefix(category, safeFolderName, fileValidation.sanitized!);
+      const targets = allFiles.filter((f) => f.customId?.startsWith(prefix));
+      if (targets.length === 0) {
+        return NextResponse.json({ error: "File not found" }, { status: 404 });
       }
-
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-        return NextResponse.json({ message: "File deleted" });
-      }
-      return NextResponse.json({ error: "File not found" }, { status: 404 });
+      await utapi.deleteFiles(targets.map((f) => f.key));
+      return NextResponse.json({ message: "File deleted" });
     } else {
-      // Delete entire folder
-      const folderPath = path.join(TEMPLATES_DIR, category, safeFolderName);
-      const resolved = path.resolve(folderPath);
-      if (!resolved.startsWith(path.resolve(TEMPLATES_DIR))) {
-        return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+      // Delete entire folder: all files whose customId starts with "category/folderName/"
+      const prefix = `${category}/${safeFolderName}/`;
+      const folderFiles = allFiles.filter((f) => f.customId?.startsWith(prefix));
+
+      if (folderFiles.length === 0) {
+        return NextResponse.json({ error: "Folder not found" }, { status: 404 });
       }
 
-      if (fs.existsSync(folderPath)) {
-        fs.rmSync(folderPath, { recursive: true, force: true });
-        return NextResponse.json({ message: "Folder deleted" });
-      }
-      return NextResponse.json({ error: "Folder not found" }, { status: 404 });
+      await utapi.deleteFiles(folderFiles.map((f) => f.key));
+      return NextResponse.json({ message: "Folder deleted" });
     }
   } catch (error) {
     console.error("Delete error:", error);

@@ -1,27 +1,5 @@
 import { NextResponse } from "next/server";
-import fs from "node:fs";
-import path from "node:path";
-
-/**
- * Scans the templates directory to dynamically discover
- * all role and appointment documents from the filesystem.
- */
-export async function GET() {
-  try {
-    const templatesDir = path.join(process.cwd(), "templates");
-
-    const roles = scanCategory(path.join(templatesDir, "roles"));
-    const appointments = scanCategory(path.join(templatesDir, "appointments"));
-
-    return NextResponse.json({ roles, appointments });
-  } catch (error) {
-    console.error("Error scanning templates:", error);
-    return NextResponse.json(
-      { error: "Failed to scan templates" },
-      { status: 500 }
-    );
-  }
-}
+import { listTemplateFiles, parseCustomId } from "@/lib/uploadthing";
 
 interface ScannedDoc {
   id: string;
@@ -29,41 +7,64 @@ interface ScannedDoc {
   fileName: string;
 }
 
-interface ScannedCategory {
+interface ScannedFolder {
   id: string;
   name: string;
   documents: ScannedDoc[];
 }
 
-function scanCategory(categoryDir: string): ScannedCategory[] {
-  if (!fs.existsSync(categoryDir)) return [];
+export async function GET() {
+  try {
+    const files = await listTemplateFiles();
 
-  const entries = fs.readdirSync(categoryDir, { withFileTypes: true });
-  const results: ScannedCategory[] = [];
+    const folderMap = new Map<string, ScannedFolder>();
 
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
+    for (const file of files) {
+      const parsed = parseCustomId(file.customId);
+      if (!parsed) continue;
+      if (parsed.category !== "roles" && parsed.category !== "appointments") continue;
 
-    const folderPath = path.join(categoryDir, entry.name);
-    const docs = scanDocuments(folderPath, entry.name);
+      const mapKey = `${parsed.category}/${parsed.folderName}`;
 
-    results.push({
-      id: entry.name,
-      name: formatName(entry.name),
-      documents: docs,
-    });
+      // Ensure the folder entry exists (even for .folder placeholders)
+      if (!folderMap.has(mapKey)) {
+        folderMap.set(mapKey, {
+          id: parsed.folderName,
+          name: formatName(parsed.folderName),
+          documents: [],
+        });
+      }
+
+      if (parsed.fileName === ".folder") continue;
+      if (!parsed.fileName.endsWith(".docx")) continue;
+
+      folderMap.get(mapKey)!.documents.push({
+        id: `${parsed.folderName}-${parsed.fileName.replace(".docx", "")}`,
+        name: formatName(parsed.fileName.replace(".docx", "")),
+        fileName: parsed.fileName,
+      });
+    }
+
+    const roles: ScannedFolder[] = [];
+    const appointments: ScannedFolder[] = [];
+
+    for (const [key, folder] of folderMap) {
+      const category = key.split("/")[0];
+      if (category === "roles") roles.push(folder);
+      else appointments.push(folder);
+    }
+
+    roles.sort((a, b) => a.name.localeCompare(b.name));
+    appointments.sort((a, b) => a.name.localeCompare(b.name));
+
+    return NextResponse.json({ roles, appointments });
+  } catch (error) {
+    console.error("Error listing templates:", error);
+    return NextResponse.json(
+      { error: "Failed to list templates" },
+      { status: 500 }
+    );
   }
-
-  return results;
-}
-
-function scanDocuments(dir: string, parentId: string): ScannedDoc[] {
-  const files = fs.readdirSync(dir).filter((f) => f.endsWith(".docx"));
-  return files.map((fileName) => ({
-    id: `${parentId}-${fileName.replace(".docx", "")}`,
-    name: formatName(fileName.replace(".docx", "")),
-    fileName,
-  }));
 }
 
 function formatName(slug: string): string {

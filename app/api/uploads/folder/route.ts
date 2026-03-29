@@ -1,50 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "node:fs";
-import path from "node:path";
 import { validateFolderName } from "@/lib/sanitize";
+import {
+  utapi,
+  buildCustomId,
+  listTemplateFiles,
+  VALID_CATEGORIES,
+} from "@/lib/uploadthing";
 
-const TEMPLATES_DIR = path.join(process.cwd(), "templates");
+import { UTFile } from "uploadthing/server";
 
-/**
- * POST /api/uploads/folder
- * Creates an empty folder under roles or appointments.
- */
 export async function POST(request: NextRequest) {
   try {
     const { category, folderName } = await request.json();
 
-    if (!category || !["roles", "appointments", "standard-models"].includes(category)) {
+    if (!category || !VALID_CATEGORIES.includes(category)) {
       return NextResponse.json(
-        { error: "Category must be 'roles' or 'appointments'" },
+        { error: "Category must be 'roles', 'appointments', or 'standard-models'" },
         { status: 400 }
       );
     }
 
     const validation = validateFolderName(folderName);
     if (!validation.valid) {
-      return NextResponse.json(
-        { error: validation.error },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
     const safeName = validation.sanitized!;
-    const targetDir = path.join(TEMPLATES_DIR, category, safeName);
+    const prefix = `${category}/${safeName}/`;
 
-    // Path traversal check
-    const resolved = path.resolve(targetDir);
-    if (!resolved.startsWith(path.resolve(TEMPLATES_DIR))) {
-      return NextResponse.json({ error: "Invalid path" }, { status: 400 });
-    }
-
-    if (fs.existsSync(targetDir)) {
+    // Check if folder already exists (has any files or placeholder)
+    const allFiles = await listTemplateFiles();
+    const exists = allFiles.some((f) => f.customId?.startsWith(prefix));
+    if (exists) {
       return NextResponse.json(
         { error: "A folder with this name already exists" },
         { status: 409 }
       );
     }
 
-    fs.mkdirSync(targetDir, { recursive: true });
+    // Upload a tiny placeholder to mark the folder as existing
+    const customId = buildCustomId(category, safeName, ".folder");
+    const placeholder = new UTFile([" "], ".folder", {
+      type: "text/plain",
+      customId,
+    });
+    const result = await utapi.uploadFiles(placeholder);
+
+    if (result.error) {
+      return NextResponse.json({ error: "Failed to create folder" }, { status: 500 });
+    }
 
     return NextResponse.json({
       message: `Folder "${folderName}" created successfully`,

@@ -40,6 +40,161 @@ interface TemplatesData {
   appointments: TemplateFolder[];
 }
 
+interface PendingFolder {
+  key: string;
+  category: Category;
+  name: string;
+}
+
+// ─────────────────────────────────────────────────────────
+// Skeleton atoms
+// ─────────────────────────────────────────────────────────
+
+function SkeletonLine({
+  width = "full",
+  height = 3,
+  className,
+}: {
+  width?: string | number;
+  height?: number;
+  className?: string;
+}) {
+  const w = typeof width === "number" ? `${width}%` : width === "full" ? "100%" : width;
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-md bg-gray-200",
+        className
+      )}
+      style={{ height: `${height * 4}px`, width: w }}
+    >
+      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/70 to-transparent" />
+    </div>
+  );
+}
+
+function SkeletonCircle({ size = 4 }: { size?: number }) {
+  return (
+    <div
+      className="relative overflow-hidden shrink-0 rounded-full bg-gray-200"
+      style={{ width: `${size * 4}px`, height: `${size * 4}px` }}
+    >
+      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/70 to-transparent" />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// Skeleton file row (shown while uploading)
+// ─────────────────────────────────────────────────────────
+
+function SkeletonFileItem({ index }: { index: number }) {
+  const widths = [62, 78, 54, 70, 66];
+  const w = widths[index % widths.length];
+  return (
+    <div
+      className="flex items-center gap-3 rounded-lg px-3 py-2.5 animate-fade-in-up"
+      style={{ animationDelay: `${index * 60}ms` }}
+    >
+      <div className="relative overflow-hidden h-4 w-4 rounded bg-gray-200 shrink-0">
+        <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/70 to-transparent" />
+      </div>
+      <SkeletonLine width={w} height={3} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// Skeleton folder card (shown while creating a folder)
+// ─────────────────────────────────────────────────────────
+
+const cardColorMap = {
+  blue: {
+    border: "border-blue-200",
+    bg: "bg-blue-50/40",
+    icon: "text-blue-400",
+    badge: "bg-blue-100 text-blue-600",
+    spinner: "text-blue-500",
+    ring: "ring-2 ring-blue-200",
+  },
+  emerald: {
+    border: "border-emerald-200",
+    bg: "bg-emerald-50/40",
+    icon: "text-emerald-400",
+    badge: "bg-emerald-100 text-emerald-600",
+    spinner: "text-emerald-500",
+    ring: "ring-2 ring-emerald-200",
+  },
+  violet: {
+    border: "border-violet-200",
+    bg: "bg-violet-50/40",
+    icon: "text-violet-400",
+    badge: "bg-violet-100 text-violet-600",
+    spinner: "text-violet-500",
+    ring: "ring-2 ring-violet-200",
+  },
+};
+
+function SkeletonFolderCard({
+  accentColor,
+  name,
+}: {
+  accentColor: "blue" | "emerald" | "violet";
+  name: string;
+}) {
+  const c = cardColorMap[accentColor];
+  return (
+    <div
+      className={cn(
+        "relative rounded-2xl border-2 border-dashed bg-white shadow-lg shadow-gray-200/50 overflow-hidden animate-fade-in-up",
+        c.border,
+        c.ring
+      )}
+    >
+      {/* Shimmer sweep across the entire card */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+      </div>
+
+      {/* Header – mirrors real TemplateIsland header */}
+      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={cn("relative overflow-hidden h-5 w-5 rounded shrink-0 bg-gray-200")}>
+            <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/70 to-transparent" />
+          </div>
+          <div className="h-4 rounded-md bg-gray-200 animate-pulse" style={{ width: Math.min(name.length * 8 + 16, 180) }} />
+          <div className="relative overflow-hidden h-5 w-6 rounded-full bg-gray-200 shrink-0">
+            <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/70 to-transparent" />
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <div className="h-7 w-7 rounded-lg bg-gray-100 animate-pulse" />
+          <div className="h-7 w-7 rounded-lg bg-gray-100 animate-pulse" />
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="flex flex-col items-center justify-center gap-3 py-8 px-4">
+        <div className={cn("relative flex items-center justify-center h-10 w-10 rounded-xl bg-gray-100")}>
+          <Loader2 className={cn("h-5 w-5 animate-spin", c.spinner)} />
+        </div>
+        <div className="text-center">
+          <p className="text-xs font-semibold text-gray-700">
+            Creating folder
+          </p>
+          <p className={cn("mt-0.5 text-xs font-medium truncate max-w-[160px]", c.icon)}>
+            "{name}"
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// Main page
+// ─────────────────────────────────────────────────────────
+
 export default function UploadsPage() {
   const [templates, setTemplates] = useState<TemplatesData>({
     roles: [],
@@ -58,8 +213,13 @@ export default function UploadsPage() {
   const [showNewRole, setShowNewRole] = useState(false);
   const [showNewAppointment, setShowNewAppointment] = useState(false);
   const [showNewModel, setShowNewModel] = useState(false);
-  const [uploading, setUploading] = useState<string | null>(null);
+
+  // uploadingFiles: key (`category-folderId`) → number of files being uploaded
+  const [uploadingFiles, setUploadingFiles] = useState<Record<string, number>>({});
   const [deleting, setDeleting] = useState<string | null>(null);
+
+  // Optimistic pending folder cards
+  const [pendingFolders, setPendingFolders] = useState<PendingFolder[]>([]);
 
   // Search state
   const [roleSearch, setRoleSearch] = useState("");
@@ -107,6 +267,18 @@ export default function UploadsPage() {
       m.name.toLowerCase().includes(modelSearch.toLowerCase())
   );
 
+  // Pending folders per category
+  const pendingRoles = pendingFolders.filter((p) => p.category === "roles");
+  const pendingAppointments = pendingFolders.filter(
+    (p) => p.category === "appointments"
+  );
+  const pendingModels = pendingFolders.filter(
+    (p) => p.category === "standard-models"
+  );
+
+  const removePendingFolder = (key: string) =>
+    setPendingFolders((prev) => prev.filter((p) => p.key !== key));
+
   // Client-side validate then upload
   const handleFilesUpload = async (
     files: FileList | File[],
@@ -118,33 +290,28 @@ export default function UploadsPage() {
     const validFiles: File[] = [];
 
     for (const file of fileArray) {
-      // 1. Extension check
       if (!file.name.toLowerCase().endsWith(".docx")) {
         errors.push(`"${file.name}" — only .docx Word documents are allowed`);
         continue;
       }
-      // 2. MIME type check
       const validMimes = [
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/octet-stream", // Some browsers report this
+        "application/octet-stream",
       ];
       if (file.type && !validMimes.includes(file.type)) {
         errors.push(`"${file.name}" — invalid file type (${file.type})`);
         continue;
       }
-      // 3. Filename sanitization
       const nameCheck = validateFileName(file.name);
       if (!nameCheck.valid) {
         errors.push(`"${file.name}" — ${nameCheck.error}`);
         continue;
       }
-      // 4. Size check
       const sizeCheck = validateFileSize(file.size);
       if (!sizeCheck.valid) {
         errors.push(`"${file.name}" — ${sizeCheck.error}`);
         continue;
       }
-      // 5. Magic bytes check (DOCX = PK zip)
       const buffer = await file.arrayBuffer();
       const magicCheck = validateDocxMagic(buffer);
       if (!magicCheck.valid) {
@@ -158,11 +325,12 @@ export default function UploadsPage() {
       setToast({ message: errors.join(". "), type: "error" });
       return;
     }
-
     if (validFiles.length === 0) return;
 
     const uploadKey = `${category}-${folderName}`;
-    setUploading(uploadKey);
+
+    // Optimistic: show skeleton file rows immediately
+    setUploadingFiles((prev) => ({ ...prev, [uploadKey]: validFiles.length }));
 
     try {
       const formData = new FormData();
@@ -174,20 +342,15 @@ export default function UploadsPage() {
         method: "POST",
         body: formData,
       });
-
       const data = await res.json();
 
       if (!res.ok) {
         setToast({ message: data.error || "Upload failed", type: "error" });
       } else {
-        const failedFiles = data.results?.filter(
-          (r: any) => r.status === "error"
-        );
+        const failedFiles = data.results?.filter((r: any) => r.status === "error");
         if (failedFiles?.length > 0) {
           setToast({
-            message: failedFiles
-              .map((f: any) => `${f.name}: ${f.error}`)
-              .join(". "),
+            message: failedFiles.map((f: any) => `${f.name}: ${f.error}`).join(". "),
             type: "error",
           });
         } else {
@@ -205,7 +368,11 @@ export default function UploadsPage() {
     } catch {
       setToast({ message: "Upload failed unexpectedly", type: "error" });
     } finally {
-      setUploading(null);
+      setUploadingFiles((prev) => {
+        const next = { ...prev };
+        delete next[uploadKey];
+        return next;
+      });
     }
   };
 
@@ -236,10 +403,7 @@ export default function UploadsPage() {
     }
   };
 
-  const handleDeleteFolder = async (
-    category: Category,
-    folderName: string
-  ) => {
+  const handleDeleteFolder = async (category: Category, folderName: string) => {
     if (
       !confirm(
         `Delete the entire "${folderName}" folder and all its documents?`
@@ -268,18 +432,32 @@ export default function UploadsPage() {
     }
   };
 
-  const handleCreateFolder = async (
-    category: Category,
-    name: string
-  ) => {
+  const handleCreateFolder = async (category: Category, name: string) => {
     const validation = validateFolderName(name);
     if (!validation.valid) {
-      setToast({
-        message: validation.error || "Invalid name",
-        type: "error",
-      });
+      setToast({ message: validation.error || "Invalid name", type: "error" });
       return;
     }
+
+    // Optimistic: hide the form and show skeleton card immediately
+    const pendingKey = `${category}-${name}-${Date.now()}`;
+    setPendingFolders((prev) => [
+      ...prev,
+      { key: pendingKey, category, name },
+    ]);
+
+    // Hide the input form right away
+    if (category === "roles") {
+      setNewRoleName("");
+      setShowNewRole(false);
+    } else if (category === "appointments") {
+      setNewAppointmentName("");
+      setShowNewAppointment(false);
+    } else {
+      setNewModelName("");
+      setShowNewModel(false);
+    }
+
     try {
       const res = await fetch("/api/uploads/folder", {
         method: "POST",
@@ -287,21 +465,8 @@ export default function UploadsPage() {
         body: JSON.stringify({ category, folderName: name }),
       });
       if (res.ok) {
-        setToast({
-          message: `Folder "${name}" created`,
-          type: "success",
-        });
+        setToast({ message: `Folder "${name}" created`, type: "success" });
         await fetchTemplates();
-        if (category === "roles") {
-          setNewRoleName("");
-          setShowNewRole(false);
-        } else if (category === "appointments") {
-          setNewAppointmentName("");
-          setShowNewAppointment(false);
-        } else {
-          setNewModelName("");
-          setShowNewModel(false);
-        }
       } else {
         const data = await res.json();
         setToast({
@@ -311,6 +476,8 @@ export default function UploadsPage() {
       }
     } catch {
       setToast({ message: "Failed to create folder", type: "error" });
+    } finally {
+      removePendingFolder(pendingKey);
     }
   };
 
@@ -344,10 +511,7 @@ export default function UploadsPage() {
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-              <span className="ml-3 text-gray-500">Loading templates...</span>
-            </div>
+            <LoadingGrid />
           ) : (
             <div className="space-y-10">
               {/* ===== ROLES ===== */}
@@ -362,8 +526,8 @@ export default function UploadsPage() {
                         Roles
                       </h2>
                       <p className="text-xs text-gray-500">
-                        {templates.roles.length} role
-                        {templates.roles.length !== 1 ? "s" : ""}
+                        {templates.roles.length + pendingRoles.length} role
+                        {templates.roles.length + pendingRoles.length !== 1 ? "s" : ""}
                       </p>
                     </div>
                   </div>
@@ -431,7 +595,7 @@ export default function UploadsPage() {
                         folder={role}
                         category="roles"
                         accentColor="blue"
-                        uploading={uploading === `roles-${role.id}`}
+                        uploadingCount={uploadingFiles[`roles-${role.id}`] ?? 0}
                         deleting={deleting}
                         onUpload={(files) =>
                           handleFilesUpload(files, "roles", role.id)
@@ -444,7 +608,15 @@ export default function UploadsPage() {
                         }
                       />
                     ))}
-                    {filteredRoles.length === 0 && (
+                    {/* Optimistic skeleton cards for roles being created */}
+                    {pendingRoles.map((p) => (
+                      <SkeletonFolderCard
+                        key={p.key}
+                        accentColor="blue"
+                        name={p.name}
+                      />
+                    ))}
+                    {filteredRoles.length === 0 && pendingRoles.length === 0 && (
                       <div className="col-span-full rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center">
                         <Briefcase className="mx-auto h-10 w-10 text-gray-300" />
                         <p className="mt-3 text-sm text-gray-400">
@@ -470,8 +642,8 @@ export default function UploadsPage() {
                         Appointments / Overlays
                       </h2>
                       <p className="text-xs text-gray-500">
-                        {templates.appointments.length} appointment
-                        {templates.appointments.length !== 1 ? "s" : ""}
+                        {templates.appointments.length + pendingAppointments.length} appointment
+                        {templates.appointments.length + pendingAppointments.length !== 1 ? "s" : ""}
                       </p>
                     </div>
                   </div>
@@ -506,10 +678,7 @@ export default function UploadsPage() {
                       className="!py-2.5"
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && newAppointmentName.trim())
-                          handleCreateFolder(
-                            "appointments",
-                            newAppointmentName
-                          );
+                          handleCreateFolder("appointments", newAppointmentName);
                       }}
                     />
                     <Button
@@ -545,7 +714,7 @@ export default function UploadsPage() {
                         folder={appt}
                         category="appointments"
                         accentColor="emerald"
-                        uploading={uploading === `appointments-${appt.id}`}
+                        uploadingCount={uploadingFiles[`appointments-${appt.id}`] ?? 0}
                         deleting={deleting}
                         onUpload={(files) =>
                           handleFilesUpload(files, "appointments", appt.id)
@@ -558,7 +727,14 @@ export default function UploadsPage() {
                         }
                       />
                     ))}
-                    {filteredAppointments.length === 0 && (
+                    {pendingAppointments.map((p) => (
+                      <SkeletonFolderCard
+                        key={p.key}
+                        accentColor="emerald"
+                        name={p.name}
+                      />
+                    ))}
+                    {filteredAppointments.length === 0 && pendingAppointments.length === 0 && (
                       <div className="col-span-full rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center">
                         <Calendar className="mx-auto h-10 w-10 text-gray-300" />
                         <p className="mt-3 text-sm text-gray-400">
@@ -584,8 +760,8 @@ export default function UploadsPage() {
                         Standard Models
                       </h2>
                       <p className="text-xs text-gray-500">
-                        {standardModels.length} model
-                        {standardModels.length !== 1 ? "s" : ""}
+                        {standardModels.length + pendingModels.length} model
+                        {standardModels.length + pendingModels.length !== 1 ? "s" : ""}
                       </p>
                     </div>
                   </div>
@@ -656,7 +832,7 @@ export default function UploadsPage() {
                         folder={model}
                         category="standard-models"
                         accentColor="violet"
-                        uploading={uploading === `standard-models-${model.id}`}
+                        uploadingCount={uploadingFiles[`standard-models-${model.id}`] ?? 0}
                         deleting={deleting}
                         onUpload={(files) =>
                           handleFilesUpload(files, "standard-models", model.id)
@@ -669,7 +845,14 @@ export default function UploadsPage() {
                         }
                       />
                     ))}
-                    {filteredModels.length === 0 && (
+                    {pendingModels.map((p) => (
+                      <SkeletonFolderCard
+                        key={p.key}
+                        accentColor="violet"
+                        name={p.name}
+                      />
+                    ))}
+                    {filteredModels.length === 0 && pendingModels.length === 0 && (
                       <div className="col-span-full rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center">
                         <Layers className="mx-auto h-10 w-10 text-gray-300" />
                         <p className="mt-3 text-sm text-gray-400">
@@ -698,14 +881,95 @@ export default function UploadsPage() {
   );
 }
 
-// ========================================================
+// ─────────────────────────────────────────────────────────
+// Initial page-load skeleton grid
+// ─────────────────────────────────────────────────────────
+
+function LoadingGrid() {
+  return (
+    <div className="space-y-10">
+      {(["blue", "emerald", "violet"] as const).map((color, sectionIdx) => (
+        <section key={color}>
+          {/* Section header skeleton */}
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-gray-200 animate-pulse" />
+              <div className="space-y-1.5">
+                <SkeletonLine width={120} height={4} />
+                <SkeletonLine width={60} height={2.5} />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-9 w-44 rounded-lg bg-gray-200 animate-pulse" />
+              <div className="h-9 w-28 rounded-lg bg-gray-200 animate-pulse" />
+            </div>
+          </div>
+          {/* Card grid skeleton */}
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <LoadingFolderCard
+                key={i}
+                accentColor={color}
+                delay={sectionIdx * 120 + i * 80}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function LoadingFolderCard({
+  accentColor,
+  delay,
+}: {
+  accentColor: "blue" | "emerald" | "violet";
+  delay: number;
+}) {
+  const borders = { blue: "border-blue-100", emerald: "border-emerald-100", violet: "border-violet-100" };
+  return (
+    <div
+      className={cn(
+        "rounded-2xl border-2 border-dashed bg-white shadow-lg shadow-gray-200/50 animate-fade-in-up overflow-hidden",
+        borders[accentColor]
+      )}
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+        <div className="flex items-center gap-3">
+          <div className="h-5 w-5 rounded bg-gray-200 animate-pulse shrink-0" />
+          <SkeletonLine width={110} height={3.5} />
+          <div className="h-5 w-6 rounded-full bg-gray-200 animate-pulse shrink-0" />
+        </div>
+        <div className="flex gap-1">
+          <div className="h-7 w-7 rounded-lg bg-gray-100 animate-pulse" />
+          <div className="h-7 w-7 rounded-lg bg-gray-100 animate-pulse" />
+        </div>
+      </div>
+      {/* File rows */}
+      <div className="divide-y divide-gray-50 px-2 py-2">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3 px-3 py-2.5">
+            <div className="h-4 w-4 rounded bg-gray-200 animate-pulse shrink-0" />
+            <SkeletonLine width={[65, 80, 50][i]} height={3} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
 // Template Island — flicker-free drag & drop per folder
-// ========================================================
+// ─────────────────────────────────────────────────────────
+
 interface TemplateIslandProps {
   folder: TemplateFolder;
   category: Category;
   accentColor: "blue" | "emerald" | "violet";
-  uploading: boolean;
+  uploadingCount: number;
   deleting: string | null;
   onUpload: (files: FileList | File[]) => void;
   onDeleteFile: (fileName: string) => void;
@@ -716,7 +980,7 @@ function TemplateIsland({
   folder,
   category,
   accentColor,
-  uploading,
+  uploadingCount,
   deleting,
   onUpload,
   onDeleteFile,
@@ -726,25 +990,18 @@ function TemplateIsland({
   const inputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
 
-  // Use a counter to prevent flickering:
-  // dragenter increments, dragleave decrements.
-  // Only show overlay when counter > 0.
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     dragCounterRef.current += 1;
-    if (dragCounterRef.current === 1) {
-      setIsDragOver(true);
-    }
+    if (dragCounterRef.current === 1) setIsDragOver(true);
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     dragCounterRef.current -= 1;
-    if (dragCounterRef.current === 0) {
-      setIsDragOver(false);
-    }
+    if (dragCounterRef.current === 0) setIsDragOver(false);
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -759,9 +1016,7 @@ function TemplateIsland({
       dragCounterRef.current = 0;
       setIsDragOver(false);
       const files = e.dataTransfer.files;
-      if (files.length > 0) {
-        onUpload(files);
-      }
+      if (files.length > 0) onUpload(files);
     },
     [onUpload]
   );
@@ -798,6 +1053,7 @@ function TemplateIsland({
   };
   const c = colorMap[accentColor];
 
+  const isUploading = uploadingCount > 0;
   const isDeletingFolder = deleting === `${category}-${folder.id}`;
 
   return (
@@ -817,13 +1073,18 @@ function TemplateIsland({
       {isDragOver && (
         <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/90 backdrop-blur-sm pointer-events-none">
           <div className="text-center">
-            <Upload
-              className={`mx-auto h-10 w-10 ${c.icon} animate-bounce`}
-            />
+            <Upload className={`mx-auto h-10 w-10 ${c.icon} animate-bounce`} />
             <p className="mt-2 text-sm font-semibold text-gray-700">
               Drop .docx files here
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Upload shimmer overlay — active while files are uploading */}
+      {isUploading && (
+        <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none z-[5]">
+          <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 to-transparent" />
         </div>
       )}
 
@@ -835,18 +1096,18 @@ function TemplateIsland({
           <span
             className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${c.badge}`}
           >
-            {folder.documents.length}
+            {folder.documents.length + (isUploading ? uploadingCount : 0)}
           </span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            disabled={uploading}
+            disabled={isUploading}
             className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors cursor-pointer disabled:opacity-50"
             title="Upload files"
           >
-            {uploading ? (
+            {isUploading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Upload className="h-4 w-4" />
@@ -868,9 +1129,9 @@ function TemplateIsland({
         </div>
       </div>
 
-      {/* Document List */}
+      {/* Document list */}
       <div className="max-h-52 overflow-y-auto custom-scrollbar">
-        {folder.documents.length > 0 ? (
+        {folder.documents.length > 0 || isUploading ? (
           <div className="divide-y divide-gray-50 px-2 py-2">
             {folder.documents.map((doc) => {
               const isDeletingFile =
@@ -900,6 +1161,12 @@ function TemplateIsland({
                 </div>
               );
             })}
+
+            {/* Skeleton file rows for in-progress uploads */}
+            {isUploading &&
+              Array.from({ length: uploadingCount }).map((_, i) => (
+                <SkeletonFileItem key={`skeleton-${i}`} index={i} />
+              ))}
           </div>
         ) : (
           <div className="p-6 text-center">
@@ -911,7 +1178,7 @@ function TemplateIsland({
         )}
       </div>
 
-      {/* Hidden file input — accept only .docx */}
+      {/* Hidden file input */}
       <input
         ref={inputRef}
         type="file"

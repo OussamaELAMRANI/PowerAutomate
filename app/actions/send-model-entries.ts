@@ -2,9 +2,13 @@
 
 import sizeOf from "image-size";
 import { TemplateData, TemplateHandler } from "easy-template-x";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import JSZip from "jszip";
+import {
+  listTemplateFiles,
+  fetchTemplateBuffer,
+  parseCustomId,
+  utapi,
+} from "@/lib/uploadthing";
 
 export interface GeneratedDocument {
   modelId: string;
@@ -39,22 +43,16 @@ export async function generateDocument(
       return { success: false, error: "Please select at least one Standard Model folder" };
     }
 
-    // Parse excluded doc IDs for filtering
     const excludedJson = formData.get("excludedDocIds") as string;
     const excludedDocIds: Set<string> = new Set(
       excludedJson ? JSON.parse(excludedJson) : []
     );
 
-    // Header placeholders
     const logoFile = formData.get("logo") as File | null;
-
-    // Footer metadata placeholders
     const docVersion = (formData.get("docVersion") as string) || "";
     const createdBy = (formData.get("createdBy") as string) || "";
     const approvedBy = (formData.get("approvedBy") as string) || "";
     const docDate = (formData.get("docDate") as string) || "";
-
-    // Company data (global) placeholders
     const companyName = (formData.get("companyName") as string) || "";
     const companyStreet = (formData.get("companyStreet") as string) || "";
     const companyZip = (formData.get("companyZip") as string) || "";
@@ -79,7 +77,6 @@ export async function generateDocument(
         "image/bmp",
         "image/svg+xml",
       ];
-
       if (supportedMimeTypes.includes(logoFile.type)) {
         imageMimeType = logoFile.type;
       }
@@ -94,24 +91,14 @@ export async function generateDocument(
       finalHeight = Math.round(originalHeight * scale);
     }
 
-    // Build template data with all placeholder categories
     const templateData: TemplateData = {
-      // Header
       Logo: logoData
-        ? {
-            _type: "image",
-            source: logoData,
-            format: imageMimeType,
-            width: finalWidth,
-            height: finalHeight,
-          }
+        ? { _type: "image", source: logoData, format: imageMimeType, width: finalWidth, height: finalHeight }
         : "",
-      // Footer Metadata
       DocVersion: docVersion,
       CreatedBy: createdBy,
       ApprovedBy: approvedBy,
       DocDate: docDate,
-      // Company Data (global)
       CompanyName: companyName,
       CompanyStreet: companyStreet,
       CompanyZip: companyZip,
@@ -120,32 +107,56 @@ export async function generateDocument(
       CompanyAddressLine: companyAddressLine,
     };
 
+    // Build a lookup: 3-segment logical path → ufsUrl
+    // (e.g. "standard-models/folder/file.docx" → url)
+    // customIds are now 4-segment ("…/timestamp"), so we key by the parsed path.
+    const allFiles = await listTemplateFiles();
+    const keys = allFiles
+      .filter((f) => f.customId?.startsWith("standard-models/"))
+      .map((f) => f.key);
+
+    let urlMap = new Map<string, string>(); // key → ufsUrl
+    if (keys.length > 0) {
+      const { data } = await utapi.getFileUrls(keys);
+      data.forEach(({ key, url }) => urlMap.set(key, url));
+    }
+
+    // logical path ("category/folder/file") → ufsUrl
+    const templateUrlMap = new Map<string, string>();
+    for (const f of allFiles) {
+      const parsed = parseCustomId(f.customId);
+      if (parsed?.category === "standard-models") {
+        const url = urlMap.get(f.key);
+        if (url) {
+          templateUrlMap.set(
+            `${parsed.category}/${parsed.folderName}/${parsed.fileName}`,
+            url
+          );
+        }
+      }
+    }
+
     const handler = new TemplateHandler();
     const zip = new JSZip();
     const generatedDocuments: GeneratedDocument[] = [];
 
-    // Process each selected folder
     for (const folderId of selectedFolders) {
-      const folderPath = path.join(
-        process.cwd(),
-        "templates",
-        "standard-models",
-        folderId
-      );
+      // Collect .docx files for this folder using the parsed logical path
+      const folderFiles = allFiles
+        .map((f) => parseCustomId(f.customId))
+        .filter(
+          (p): p is NonNullable<typeof p> =>
+            p?.category === "standard-models" &&
+            p.folderName === folderId &&
+            p.fileName.endsWith(".docx")
+        )
+        // de-duplicate: keep one entry per fileName (re-uploads create new timestamps)
+        .filter(
+          (p, i, arr) => arr.findIndex((x) => x.fileName === p.fileName) === i
+        );
 
-      // Path traversal check
-      const resolved = path.resolve(folderPath);
-      if (!resolved.startsWith(path.resolve(path.join(process.cwd(), "templates")))) {
-        return { success: false, error: "Invalid folder path" };
-      }
-
-      // Read all .docx files in the folder
-      const { readdirSync } = await import("node:fs");
-      let files: string[];
-      try {
-        files = readdirSync(folderPath).filter((f) => f.endsWith(".docx"));
-      } catch {
-        return { success: false, error: `Folder "${folderId}" not found` };
+      if (folderFiles.length === 0) {
+        return { success: false, error: `Folder "${folderId}" not found or empty` };
       }
 
       const folderName = folderId
@@ -154,15 +165,18 @@ export async function generateDocument(
 
       const zipFolder = zip.folder(folderName);
 
-      for (const fileName of files) {
-        // Build the doc ID the same way the client does: folderId-fileNameWithoutExtension
+      for (const { fileName } of folderFiles) {
         const docId = `${folderId}-${fileName.replace(".docx", "")}`;
-        if (excludedDocIds.has(docId)) continue; // Skip excluded docs
+        if (excludedDocIds.has(docId)) continue;
 
-        const templatePath = path.join(folderPath, fileName);
+        const logicalPath = `standard-models/${folderId}/${fileName}`;
+        const url = templateUrlMap.get(logicalPath);
+        if (!url) {
+          return { success: false, error: `Template not found: ${logicalPath}` };
+        }
 
         try {
-          const templateBuffer = await readFile(templatePath);
+          const templateBuffer = await fetchTemplateBuffer(url);
           const processedDoc = await handler.process(templateBuffer, templateData);
           zipFolder?.file(fileName, processedDoc);
 
@@ -181,7 +195,6 @@ export async function generateDocument(
       }
     }
 
-    // Generate ZIP
     const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
     const zipBase64 = zipBuffer.toString("base64");
 

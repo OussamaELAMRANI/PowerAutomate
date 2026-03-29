@@ -158,7 +158,7 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
     if (data.companyAddressLine)
       formData.append("companyAddressLine", data.companyAddressLine);
     if (logoFile) formData.append("logo", logoFile);
-	console.log(data)
+	console.log( Array.from(formData))
     onSubmit(formData);
   };
 
