@@ -17,9 +17,8 @@ const DANGEROUS_PATTERNS = [
 ];
 
 // Allowed characters: alphanumeric, hyphens, underscores, dots, spaces, umlauts (German chars)
-const SAFE_FILENAME_REGEX = /^[a-zA-Z0-9äöüÄÖÜß\s._-]+$/;
-const SAFE_FOLDER_REGEX = /^[a-zA-Z0-9äöüÄÖÜß\s,_-]+$/;
-
+const SAFE_FILENAME_REGEX = /^[\p{L}\p{N}\p{M} ._-]+$/u;
+const SAFE_FOLDER_REGEX = /^[\p{L}\p{N}\p{M} ._-]+$/u;
 export interface ValidationResult {
   valid: boolean;
   error?: string;
@@ -75,7 +74,7 @@ export function validateFolderName(name: string): ValidationResult {
     return { valid: false, error: "Name cannot be empty" };
   }
 
-  const trimmed = name.trim();
+  const trimmed = name.trim().normalize("NFC");
 
   for (const pattern of DANGEROUS_PATTERNS) {
     if (pattern.test(trimmed)) {

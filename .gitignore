@@ -1,5 +1,5 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
+.idea
 # dependencies
 /node_modules
 /.pnp
@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+templates/**/*
+
+# 2. Ignore everything inside the subfolders
+templates/appointments/*
+templates/roles/*
+templates/standard-models/*
+
+!templates/appointments/.gitkeep
+!templates/roles/.gitkeep
+!templates/standard-models/.gitkeep
