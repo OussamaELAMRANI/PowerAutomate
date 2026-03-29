@@ -1,3 +1,4 @@
+import { format } from "@formkit/tempo";
 import { z } from "zod";
 
 export const modelFormSchema = z.object({
@@ -17,7 +18,10 @@ export const modelFormSchema = z.object({
     .string()
     .min(2, "Approved by must be at least 2 characters")
     .max(100, "Approved by too long"),
-  docDate: z.string().min(1, "Please select a date"),
+  docDate: z.string().transform(val => {
+	return format(val,"YYYY.MM.DD")
+  }),
+//   .min(1, "Please select a date"),
   // Company Data (global)
   companyName: z
     .string()

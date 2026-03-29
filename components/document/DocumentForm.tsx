@@ -132,6 +132,7 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
     setLogoFile(null);
     onReset?.();
   };
+  
 
   const handleFormSubmit = (data: ModelFormData) => {
     const formData = new FormData();
@@ -143,6 +144,7 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
         JSON.stringify(Array.from(excludedDocIds))
       );
     }
+	
     formData.append("docVersion", data.docVersion);
     formData.append("createdBy", data.createdBy);
     formData.append("approvedBy", data.approvedBy);
@@ -156,6 +158,7 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
     if (data.companyAddressLine)
       formData.append("companyAddressLine", data.companyAddressLine);
     if (logoFile) formData.append("logo", logoFile);
+	console.log(data)
     onSubmit(formData);
   };
 
@@ -461,7 +464,7 @@ export const DocumentForm: React.FC<DocumentFormProps> = ({
                 label="Full Address Line"
                 name="companyAddressLine"
                 id="companyAddressLine"
-                description="Combined address (auto-fills {{CompanyAddressLine}})"
+                description="Combined address (auto-fills {CompanyAddressLine})"
               >
                 <Input
                   id="companyAddressLine"
