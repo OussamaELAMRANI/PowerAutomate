@@ -109,10 +109,11 @@ export function validateFolderName(name: string): ValidationResult {
  * Validates file size (max 10MB per file)
  */
 export function validateFileSize(sizeBytes: number): ValidationResult {
-  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-  if (sizeBytes > MAX_SIZE) {
-    return { valid: false, error: "File exceeds maximum size of 10MB" };
-  }
+	// skip the size validation of 10MB for docs
+//   const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+//   if (sizeBytes > MAX_SIZE) {
+//     return { valid: false, error: "File exceeds maximum size of 10MB" };
+//   }
   if (sizeBytes === 0) {
     return { valid: false, error: "File is empty" };
   }
@@ -125,6 +126,7 @@ export function validateFileSize(sizeBytes: number): ValidationResult {
 export function validateDocxMagic(buffer: ArrayBuffer): ValidationResult {
   const bytes = new Uint8Array(buffer.slice(0, 4));
   // PK ZIP header: 0x50 0x4B 0x03 0x04
+
   if (
     bytes[0] === 0x50 &&
     bytes[1] === 0x4b &&

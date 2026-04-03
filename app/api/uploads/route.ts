@@ -46,10 +46,12 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      if (file.size > 10 * 1024 * 1024) {
-        results.push({ name: file.name, status: "error", error: "File exceeds 10MB limit" });
-        continue;
-      }
+	  // CHECK THE SIZE OF THE UPLOADS
+	//   
+    //   if (file.size > 10 * 1024 * 1024) {
+    //     results.push({ name: file.name, status: "error", error: "File exceeds 10MB limit" });
+    //     continue;
+    //   }
 
       if (file.size === 0) {
         results.push({ name: file.name, status: "error", error: "File is empty" });

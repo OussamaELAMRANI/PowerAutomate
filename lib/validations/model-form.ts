@@ -21,7 +21,6 @@ export const modelFormSchema = z.object({
   docDate: z.string().transform(val => {
 	return format(val,"YYYY.MM.DD")
   }),
-//   .min(1, "Please select a date"),
   // Company Data (global)
   companyName: z
     .string()

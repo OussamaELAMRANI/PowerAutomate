@@ -297,6 +297,7 @@ export default function UploadsPage() {
       const validMimes = [
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/octet-stream",
+		"application/wps-office.docx"
       ];
       if (file.type && !validMimes.includes(file.type)) {
         errors.push(`"${file.name}" — invalid file type (${file.type})`);
