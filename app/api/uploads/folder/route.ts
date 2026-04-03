@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
       type: "text/plain",
       customId,
     });
-    const result = await utapi.uploadFiles(placeholder);
 
+    const result = await utapi.uploadFiles(placeholder);
     if (result.error) {
       return NextResponse.json({ error: "Failed to create folder" }, { status: 500 });
     }
