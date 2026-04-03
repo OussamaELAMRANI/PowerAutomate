@@ -17,7 +17,7 @@ const DANGEROUS_PATTERNS = [
 ];
 
 // Allowed characters: alphanumeric, hyphens, underscores, dots, spaces, umlauts (German chars)
-const SAFE_FILENAME_REGEX = /^[\p{L}\p{N}\p{M} ._-]+$/u;
+const SAFE_FILENAME_REGEX = /^[\p{L}\p{N}\p{M} ,._-]+$/u;
 const SAFE_FOLDER_REGEX = /^[\p{L}\p{N}\p{M} ._-]+$/u;
 export interface ValidationResult {
   valid: boolean;
