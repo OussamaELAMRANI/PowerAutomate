@@ -69,11 +69,15 @@ export async function uploadTemplateFile(
   fileName: string,
   customId: string
 ): Promise<string> {
-  const utFile = new UTFile([buffer], fileName, {
+  const utFile = 
+  new UTFile([buffer]
+	,fileName, {
     type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     customId,
   });
+
   const result = await utapi.uploadFiles(utFile);
+  
   if (result.error) {
     console.error("[UploadThing] Upload failed:", result.error);
     throw new Error(result.error.message ?? "Upload failed");
