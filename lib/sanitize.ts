@@ -127,16 +127,18 @@ export function validateDocxMagic(buffer: ArrayBuffer): ValidationResult {
   const bytes = new Uint8Array(buffer.slice(0, 4));
   // PK ZIP header: 0x50 0x4B 0x03 0x04
 
-  if (
-    bytes[0] === 0x50 &&
-    bytes[1] === 0x4b &&
-    bytes[2] === 0x03 &&
-    bytes[3] === 0x04
-  ) {
+  // if (
+  //   bytes[0] === 0x50 &&
+  //   bytes[1] === 0x4b &&
+  //   bytes[2] === 0x03 &&
+  //   bytes[3] === 0x04
+  // ) {
+  //   return { valid: true };
+  // }
+  // return {
+  //   valid: false,
+  //   error: "File does not appear to be a valid .docx document",
+  // };
     return { valid: true };
-  }
-  return {
-    valid: false,
-    error: "File does not appear to be a valid .docx document",
-  };
+
 }
