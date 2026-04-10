@@ -1,9 +1,9 @@
 /**
  * electron-builder afterPack hook.
  * Copies electron/standalone/ into the packaged app's resources/ directory.
- * This bypasses electron-builder's built-in node_modules filtering.
+ * Uses a filter to skip broken pnpm symlinks.
  */
-import { cpSync } from "node:fs";
+import { cpSync, statSync } from "node:fs";
 import path from "node:path";
 
 export default async function afterPack(context) {
@@ -14,7 +14,20 @@ export default async function afterPack(context) {
   console.log(`   from: ${src}`);
   console.log(`   to:   ${dest}`);
 
-  cpSync(src, dest, { recursive: true, dereference: true });
+  cpSync(src, dest, {
+    recursive: true,
+    dereference: true,
+    force: true,
+    errorOnExist: false,
+    filter: (source) => {
+      try {
+        statSync(source);
+        return true;
+      } catch {
+        return false; // skip broken symlinks
+      }
+    },
+  });
 
   console.log(`   ✅ Done\n`);
 }
