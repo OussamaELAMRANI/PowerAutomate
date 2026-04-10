@@ -1,20 +1,27 @@
 {
   "name": "power-automate",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
-  "main": "electron/electron-entry.js",
+  "main": "./electron/electron-entry.js",
+  "type": "module",
+  "author": {
+    "name": "PowerAutomate Team",
+    "email": "dev@powerautomate.app"
+  },
+  "description": "Document automation desktop app — generate, manage, and process templates.",
   "scripts": {
-    "electron:dev": "concurrently \"next dev\" \"wait-on http://127.0.0.1:3000 && electron .\"",
+    "dev": "next dev",
     "start": "next start",
     "lint": "eslint",
-    "dev": "next dev",
     "build:next": "next build",
-    "postbuild:next": "cp -r public .next/standalone/public && cp -r .next/static .next/standalone/.next/static",
-    "build:electron": "tsc electron/electron-entry.ts",
-    "build": "pnpm run build:next && pnpm run postbuild:next && pnpm run build:electron",
-    "preview:desktop": "NODE_ENV=production pnpm exec electron .",
-    "dist": "npm run build:next && npm run postbuild:next && electron-builder",
-    "dist:win": "pnpm run build && electron-builder --win"
+    "postbuild": "node electron/postbuild.mjs",
+    "build": "pnpm run build:next && pnpm run postbuild",
+    "electron:dev": "concurrently \"next dev\" \"wait-on http://127.0.0.1:3000 && electron .\"",
+    "preview:desktop": "pnpm run build && cross-env NODE_ENV=production electron .",
+    "dist:linux": "pnpm run build && electron-builder --linux",
+    "dist:win": "pnpm run build && electron-builder --win",
+    "dist:mac": "pnpm run build && electron-builder --mac",
+    "dist:all": "pnpm run build && electron-builder --linux --win --mac"
   },
   "dependencies": {
     "@formkit/tempo": "^1.0.0",
@@ -53,22 +60,35 @@
   "build": {
     "appId": "com.power.automate",
     "productName": "PowerAutomate",
+    "afterPack": "./electron/afterPack.mjs",
     "directories": {
       "output": "release"
     },
     "files": [
-      "dist/**/*",
       "electron/**/*",
-      ".next/standalone/**/*",
+      "!electron/standalone/**",
       "package.json"
     ],
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Office",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
     "win": {
       "target": "nsis",
       "artifactName": "${productName}-Setup-${version}.${ext}"
     },
-    "asarUnpack": [
-      ".next/standalone/**/*"
-    ],
-    "asar": true
+    "mac": {
+      "target": ["dmg"],
+      "category": "public.app-category.business",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "asar": true,
+    "asarUnpack": []
   }
 }
