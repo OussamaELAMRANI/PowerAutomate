@@ -48,6 +48,11 @@ export interface GlobalProperties {
   companyName: string;
   companyEmail: string;
   companyAddress: string;
+  companyLogo?: string; // Base64 string for logo
+  documentVersion?: string;
+  documentDate?: string;
+  createdBy?: string;
+  approvedBy?: string;
 }
 
 export interface ScannedTemplates {

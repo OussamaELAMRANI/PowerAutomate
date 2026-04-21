@@ -33,6 +33,7 @@ export default function EmployeeAutomationPage() {
     companyEmail: "",
     companyAddress: "",
   });
+  const [logoFile, setLogoFile] = useState<File | null>(null);
 
   // Dynamic template data from API
   const [roles, setRoles] = useState<Role[]>([]);
@@ -64,7 +65,7 @@ export default function EmployeeAutomationPage() {
 
   const handleUpdateEmployee = useCallback((employee: Employee) => {
     setEmployees((prev) =>
-      prev.map((e) => (e.id === employee.id ? employee : e))
+      prev.map((e) => (e.id === employee.id ? employee : e)),
     );
     setEditingEmployee(null);
     setFormKey((k) => k + 1);
@@ -104,11 +105,26 @@ export default function EmployeeAutomationPage() {
 
     setIsGenerating(true);
     try {
+      let logoBase64 = globalProps.companyLogo;
+      if (logoFile) {
+        logoBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(logoFile);
+        });
+      }
+
+      const finalGlobalProps = {
+        ...globalProps,
+        companyLogo: logoBase64,
+      };
+
       const result = await generateEmployeeDocs(
         employees,
-        globalProps,
+        finalGlobalProps,
         roles,
-        appointments
+        appointments,
       );
 
       if (result.success && result.zipBase64) {
@@ -173,7 +189,12 @@ export default function EmployeeAutomationPage() {
           {/* Main Content: Sidebar + Form */}
           <div className="flex gap-6 mb-8">
             {/* Collapsible Global Sidebar */}
-            <GlobalSidebar value={globalProps} onChange={setGlobalProps} />
+            <GlobalSidebar
+              value={globalProps}
+              onChange={setGlobalProps}
+              logoFile={logoFile}
+              onLogoChange={setLogoFile}
+            />
 
             {/* Employee Form */}
             <div className="flex-1 min-w-0">
