@@ -220,7 +220,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             leaveFrom="opacity-100 translate-y-0"
             leaveTo="opacity-0 translate-y-1"
           >
-            <PopoverPanel className="absolute z-30 mt-2 w-80 origin-top-left rounded-2xl bg-white p-4 shadow-xl ring-1 ring-black/5 focus:outline-none">
+            <PopoverPanel anchor="bottom start" className="z-[100] mt-2 w-80 rounded-2xl bg-white p-4 shadow-xl ring-1 ring-black/5 focus:outline-none ">
               {/* Header with navigation */}
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-1">
