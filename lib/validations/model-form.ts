@@ -18,8 +18,8 @@ export const modelFormSchema = z.object({
     .string()
     .min(2, "Approved by must be at least 2 characters")
     .max(100, "Approved by too long"),
-  docDate: z.string().transform(val => {
-	return format(val,"YYYY.MM.DD")
+  docDate: z.string().transform((val) => {
+    return format(val, "DD.MM.YYYY");
   }),
   // Company Data (global)
   companyName: z
