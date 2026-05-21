@@ -65,6 +65,7 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
           fullName: editingEmployee.fullName,
           birthday: editingEmployee.birthday,
           startDate: editingEmployee.startDate,
+          endDate: editingEmployee.endDate || "",
           roleId: editingEmployee.roleId,
           appointmentIds: editingEmployee.appointmentIds,
           roleType: editingEmployee.roleType || "",
@@ -77,6 +78,7 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
           fullName: "",
           birthday: "",
           startDate: "",
+          endDate: "",
           roleId: "",
           appointmentIds: [],
           roleType: "",
@@ -181,6 +183,7 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
       fullName: data.fullName,
       birthday: data.birthday,
       startDate: data.startDate,
+      endDate: data.endDate || undefined,
       roleId: data.roleId,
       appointmentIds: data.appointmentIds,
       selectedRoleDocIds: Array.from(selectedRoleDocIds),
@@ -204,6 +207,7 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
       fullName: "",
       birthday: "",
       startDate: "",
+      endDate: "",
       roleId: "",
       appointmentIds: [],
       roleType: "",
@@ -312,8 +316,26 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
                           <DatePicker
                             value={field.value}
                             onChange={field.onChange}
-                            placeholder="Select start date"
+                            placeholder="DD.MM.YYYY"
                             hasError={!!errors.startDate}
+                          />
+                        )}
+                      />
+                    </FormField>
+                    <FormField
+                      label="End Date"
+                      name="endDate"
+                      id="endDate"
+                      description="{EndDate} placeholder"
+                    >
+                      <Controller
+                        name="endDate"
+                        control={control}
+                        render={({ field }) => (
+                          <DatePicker
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            placeholder="DD.MM.YYYY"
                           />
                         )}
                       />

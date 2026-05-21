@@ -7,6 +7,7 @@ export const employeeFormSchema = z.object({
     .max(100, "Full name must be less than 100 characters"),
   birthday: z.string().min(1, "Please select a birthday"),
   startDate: z.string().min(1, "Please select a start date"),
+  endDate: z.string().optional(),
   roleId: z.string().min(1, "Please select a role"),
   appointmentIds: z.array(z.string()),
   // New optional fields
