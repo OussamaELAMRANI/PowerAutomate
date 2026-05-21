@@ -80,15 +80,14 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     return `${year}-${month}-${day}`;
   };
 
+  /** Display as DD.MM.YYYY */
   const formatDisplayDate = (dateStr: string): string => {
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return "";
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    const d = String(date.getDate()).padStart(2, "0");
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const y = date.getFullYear();
+    return `${d}.${m}.${y}`;
   };
 
   const isDateDisabled = (date: Date): boolean => {
@@ -195,9 +194,12 @@ export const DatePicker: React.FC<DatePickerProps> = ({
           <PopoverButton
             disabled={disabled}
             className={cn(
-              "relative w-full cursor-pointer rounded-xl border bg-white py-3 pl-10 pr-4 text-left shadow-sm transition-all duration-200",
+              /* bg-white + !text-gray-900 together ensure the button is always
+                 white background with black text, defeating any dark-mode
+                 browser stylesheet that would turn button text white */
+              "relative w-full cursor-pointer rounded-xl border bg-white !text-gray-900 py-3 pl-10 pr-4 text-left shadow-sm transition-all duration-200",
               "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
-              "disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500",
+              "disabled:cursor-not-allowed disabled:bg-gray-50 disabled:!text-gray-500",
               hasError
                 ? "border-red-300 focus:border-red-500 focus:ring-red-500/20"
                 : "border-gray-200 hover:border-gray-300"
@@ -206,7 +208,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
               <Calendar className="h-5 w-5 text-gray-400" />
             </span>
-            <span className={cn(!value && "text-gray-400")}>
+            <span className={cn(!value && "!text-gray-400")}>
               {value ? formatDisplayDate(value) : placeholder}
             </span>
           </PopoverButton>

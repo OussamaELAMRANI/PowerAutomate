@@ -15,6 +15,7 @@ import {
   parseCustomId,
   utapi,
 } from "@/lib/uploadthing";
+import { formatGermanyDate } from "@/lib/utils/date";
 
 export interface GenerateEmployeeDocsState {
   success: boolean;
@@ -65,11 +66,7 @@ export async function generateEmployeeDocs(
 
     const zip = new JSZip();
     const handler = new TemplateHandler();
-    const currentDate = new Date().toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+    const currentDate = formatGermanyDate(new Date());
 
     let logoData = null;
     let imageMimeType = "image/png";
@@ -116,14 +113,12 @@ export async function generateEmployeeDocs(
       const employeeFolder = zip.folder(employee.fullName);
       if (!employeeFolder) continue;
 
-      const formatDisplayDate = (dateStr: string) => {
+
+      // Parse a stored ISO date string (YYYY-MM-DD) → DD.MM.YYYY
+      const parseDate = (dateStr: string) => {
+        if (!dateStr) return "";
         const d = new Date(dateStr);
-        if (isNaN(d.getTime())) return dateStr;
-        return d.toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        });
+        return isNaN(d.getTime()) ? dateStr : formatGermanyDate(d);
       };
 
       const templateData: TemplateData = {
@@ -137,8 +132,9 @@ export async function generateEmployeeDocs(
             }
           : "",
         FullName: employee.fullName,
-        Birthday: formatDisplayDate(employee.birthday),
-        StartDate: formatDisplayDate(employee.startDate),
+        Birthday: parseDate(employee.birthday),
+        StartDate: parseDate(employee.startDate),
+        EndDate: parseDate(employee.endDate || ""),
         RoleName: role.name,
         RoleType: employee.roleType || "",
         TrainingHours: employee.trainingHours || "",

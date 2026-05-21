@@ -29,6 +29,7 @@ export interface Employee {
   fullName: string;
   birthday: string;
   startDate: string;
+  endDate?: string;
   roleId: string;
   appointmentIds: string[];
   /** IDs of role docs to include (filtered by user) */

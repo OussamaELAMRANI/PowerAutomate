@@ -1,8 +1,9 @@
-import {format} from "@formkit/tempo"
+import { format } from "@formkit/tempo";
 
-
-export const formatGermanyDate = (date: Date) => {
-	const formatted =  format(date,"YYYY/MM/DD")
-	return formatted
-
-} 
+/**
+ * Formats a date as DD.MM.YYYY (e.g. 08.05.2026)
+ * Used for all date output in generated documents.
+ */
+export const formatGermanyDate = (date: Date): string => {
+  return format(date, "DD.MM.YYYY");
+};
